@@ -335,7 +335,7 @@ thread.start();
 
 ## 原理和流程
 
-![ThreadPool](img/ThreadPool.png)
+![Thread](img/Thread.png)
 
 说明：当线程数小于核心线程数，即使有空闲线程，线程池也会创建新线程处理。
 
