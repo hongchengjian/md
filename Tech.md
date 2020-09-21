@@ -8,7 +8,7 @@
 
 
 
-作者：hcj （1）水平有限，文档有不对之处请及时指正（2）不系统、不完善（3）来源于博客、书籍、官网、总结
+作者：hcj （1）水平有限，文档有不对之处请及时指正（2）不系统、不完善（3）来源于整理、总结、博客
 
 # 线程
 
@@ -125,7 +125,7 @@ NEW、RUNNABLE、BLOCKED、WAITING、TIMED_WAITING、TERMINATED
 
 ## 线程状态流转
 
-![Thread](img/Thread.png)
+![Thread](http://hongchengjian.gitee.io/md/img/thread/Thread.png)
 
 ## 线程开始
 
