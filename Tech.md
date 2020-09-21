@@ -335,7 +335,7 @@ thread.start();
 
 ## 原理和流程
 
-![ThreadPool](img/ThreadPool.png)
+![ThreadPool](http://hongchengjian.gitee.io/md/img/thread/ThreadPool.png)
 
 说明：当线程数小于核心线程数，即使有空闲线程，线程池也会创建新线程处理。
 
@@ -343,7 +343,7 @@ thread.start();
 
 线程数=maxPoolSize，且任务队列已满，线程池会拒绝处理任务而抛异常。
 
-![ThreadPool Model](img/ThreadPool Model.png)
+![ThreadPool Model](http://hongchengjian.gitee.io/md/img/thread/ThreadPool%20Model.png)
 
 ## 线程池 VS new Thread
 
@@ -998,13 +998,13 @@ ObjectMonitor() {
 
 # 64位虚拟机对象头存储
 
-![OS 64bit markword](img\OS 64bit markword.png)
+![OS 64bit markword](http://hongchengjian.gitee.io/md/img/jvm/OS%2064bit%20markword.png)
 
 # Java API-多线程同步5种方式
 
 #### synchronized原理图
 
-![synchronized](\img\synchronized.png)
+![synchronized](http://hongchengjian.gitee.io/md/img/thread/synchronized.png)
 
 synchronized可以将++i或i++等运算或一个方法(函数)变成一个原子操作。注意：当一个线程访问object的一个加锁代码块时，另一个线程仍可以访问该object中的非加锁代码块。
 
@@ -1256,7 +1256,7 @@ synchronized(obj)粒度更细，synchronized(obj)更灵活。obj可以是this。
 
 ##### Java内存模型
 
-![volatile](\img\volatile.png)
+![volatile](http://hongchengjian.gitee.io/md/img/thread/volatile.png)
 
 ##### 主内存 VS 工作内存　
 
@@ -1316,7 +1316,7 @@ ConcurrentHashMap多线程的读 get( )没加锁，实现依赖于volatile。
 
 DCL单例必须要volatile
 
-多线程循环中的判断开关
+多线程循环中的判断开关是否停止线程
 
 ### 4.ReentrantLock
 
@@ -1743,7 +1743,7 @@ Lock lock=new ReentrantLock(false);//非公平锁 默认
 
 如何设计一个读写锁？
 
-![ReadWriteLock](\img\ReadWriteLock.png)
+![ReadWriteLock](http://hongchengjian.gitee.io/md/img/juc/ReadWriteLock.png)
 
 ```java
     	/*
@@ -1775,7 +1775,7 @@ ReentrantReadWriteLock一把读锁ReadLock，一把写锁WriteLock。ReentrantRe
 
 JDK 1.7 ConcurrentHashMap 数据结构图：
 
-![ConcurrentHashMap分段锁结构](img/ConcurrentHashMap分段锁结构.png)
+![ConcurrentHashMap分段锁结构](http://hongchengjian.gitee.io/md/img/collection/JDK1.7%20ConcurrentHashMap%20Segment.png)
 
 为什么ConcurrentHashMap后续把分段锁去掉了？JDK 1.7 ConcurrentHashMap是分段锁，JDK 1.8 ConcurrentHashMap降低锁的粒度 。
 
@@ -1798,7 +1798,7 @@ size( )
 
 AtomicXXX：当大量线程同时去访问时，会因为大量线程执行CAS操作失败而进行空转，导致CPU资源消耗过多，而且执行效率也不高。Doug Lea JDK1.8中对CAS进行了优化，基于了CAS分段锁提供了LongAdder。
 
-![LongAdder](\img\LongAdder.png)
+![LongAdder](http://hongchengjian.gitee.io/md/img/juc/LongAdder.png)
 
 LongAdder父类Striped64维护Cell[]和long base，当多个线程操作一个变量，会先base上进行cas，线程增多时，就使用cell数组。当base将更新值时（调casBase更新base值失败），会自动使用cell数组，每一个线程对应一个cell，每一个线程对cell进行cas操作，可将单一value的更新压力分担到多个value中，大量线程得以分散并发压力，减少了大量线程CAS操作失败而进行空转，提高了并发效率。
 
@@ -1842,7 +1842,7 @@ https://www.jianshu.com/p/824b2e4f1eed 几种实现
 
 ### 64 Bit MarkWord
 
-![image-20200825160203933](C:\Users\DFG\AppData\Roaming\Typora\typora-user-images\image-20200825160203933.png)
+![OS 64bit markword.png](http://hongchengjian.gitee.io/md/img/jvm/OS%2064bit%20markword.png)
 
 锁可以从偏向锁(一次CAS)升级到轻量级锁(获取及释放锁依赖多次CAS原子指令集)，再升级到重量级锁。
 
@@ -1850,7 +1850,7 @@ https://www.jianshu.com/p/824b2e4f1eed 几种实现
 
  偏向锁状态---> 轻量级锁状态--->重量级锁状态
 
-![image-20200827134653565](C:\Users\DFG\AppData\Roaming\Typora\typora-user-images\image-20200827134653565.png)
+![synchronized](http://hongchengjian.gitee.io/md/img/thread/synchronized.png)
 
 ### 为什么引入轻量级锁？
 
@@ -2352,8 +2352,6 @@ select/poll有很大socket集合时，每次调用会线性扫描全部的集合
 ### 哨兵
 
 哨兵作用：监控和**故障切换（failover）**（1）主库和从库是否正常运行。（2）主库挂了，从库是否能切过去成为新主库（Pub、Sub模式）
-
-![sentine configl config](img/sentinel config.png)
 
 ```shell
 tmpwatch --atime 30d /tmp 清除/tmp目录下30天没有被访问文件
@@ -2871,7 +2869,7 @@ cluster info 查看当前集群信息
 cluster nodes 查看集群各个节点负责的Slot
 ```
 
-![redis Slot作用](img/redis Slot作用.png)
+补Redis Slot流程图
 
 节点数在1000以内够用：Redis的集群主节点数量基本不可能超过1000个。节点数在1000以内的redis cluster集群，16384个槽位足够用。
 
@@ -3293,9 +3291,9 @@ IBM，Pure，NetApp，EMC，SAP
 
 ## 云原生
 
-Cloud+Native 
+云原生：Devops + 持续交付 + 容器化 + 微服务
 
-![云原生](img/云原生.png)
+Cloud+Native 
 
 ### AliYun组件
 
@@ -3353,7 +3351,7 @@ AKF、无状态、Restful、前后分离、SpringCloud 搭建微服务准则　h
 
 链式、聚合器、异步消息、数据共享
 
-![微服务架构设计模式](img/微服务架构设计模式.png)
+![Microservice Architecture](http://hongchengjian.gitee.io/md/img/springcloud/Microservice%20Architecture%20VS.png)
 
 ## 注解
 
@@ -3506,7 +3504,7 @@ Seata(),dts,tcc-transaction,hmily,ByteTCC,myth,EasyTransaction,tx-lcn
 
 二阶段提交2PC、三阶段提交3PC、Sagas长事务、补偿事务、可靠事件模式(本地事件表、外部事件表)、可靠事件模式(非事务消息、事务消息)、TCC
 
-![分布式事务](img/分布式事务.png)
+![Distributed Transaction](http://hongchengjian.gitee.io/md/img/db/Distributed%20Transaction%20VS.png)
 
 ## 分布式定时任务调度和管理
 
@@ -3927,13 +3925,13 @@ OSS、DBFS、CPFS、HDFS
 
 ## SpringMVC执行流程
 
-![Screen Shot 2020-05-07 at 1.44.23 AM](img/SpringMVC执行过程.png)
+![SpringMVC1](http://hongchengjian.gitee.io/md/img/springmvc/SpringMVC1.png)
 
-![SpringMVC执行流程](img/SpringMVC执行流程.png)
+![SpringMVC2](http://hongchengjian.gitee.io/md/img/springmvc/SpringMVC2.png)
 
 ## IOC容器的生命周期
 
-![IOC生命周期](img/IOC生命周期.png)
+![IOC](http://hongchengjian.gitee.io/md/img/spring/IOC.png)
 
 扩展点
 
@@ -4852,7 +4850,7 @@ Zero-Copy 零拷贝技术
 
 ### 有序消费
 
-![kafka有序消费](img/kafka有序消费.png)
+![Kafka Ordering Consume](http://hongchengjian.gitee.io/md/img/mq/Kafka%20Ordering%20Comsume.png)
 
 ### ISR、AR代表什么？ISR伸缩？
 
@@ -4888,7 +4886,7 @@ Consumer分配5个Partition。
 
 ### 模型
 
-![rabbitMQ模型](img/rabbitMQ模型.png)
+![RabbitMQ Model](http://hongchengjian.gitee.io/md/img/mq/RabbitMQ%20Model.png)
 
 ### 顺序消费(RabbitMQ本身缺少顺序消费机制)
 
@@ -5150,7 +5148,7 @@ stream VS parallstream(Fork join)
 
 #### Stream分类
 
-![JDK1.8Stream](img/JDK1.8Stream.png)
+![JDK1.8 Stream](http://hongchengjian.gitee.io/md/img/jdk/JDK1.8%20Stream.png)
 
 #### Stream原理
 
@@ -5409,7 +5407,7 @@ Q：多个实体类用同一个序列化id会发生什么？
 
 ## 选型
 
-![image-20200423214656933](img/数据库比较.png)
+![DB VS](http://hongchengjian.gitee.io/md/img/db/DB%20VS.png)
 
 ## 数据库规范
 
@@ -5641,7 +5639,7 @@ Read uncommitted 读未提交：最低级别，任何情况都无发提交
 
 脏读 T1读取了T2未提交数据
 
-幻读（虚读）：一次事务里，多次查询后，结果集的个数不一致叫幻读。Ex.T1事务读123，T2事务插入4提交，T1再读库里1234。![幻读](img/幻读.png)
+幻读（虚读）：一次事务里，多次查询后，结果集的个数不一致叫幻读。Ex.T1事务读123，T2事务插入4提交，T1再读库里1234。![Phantom Read](http://hongchengjian.gitee.io/md/img/db/Phantom%20Read.png)
 
 MySQL可重复读的事务隔离级别前提下，T1事务读123，T2事务插入4，但T2提交后又撤销了，对T1事务的读并没有影响。
 
@@ -5687,7 +5685,7 @@ or 索引会失效
 
 like '%XXX' 不走索引，为什么？数据大时前缀索引数据也会变得非常大，没有意义。但like reverse后走索引，也可以用覆盖索引，如下面的执行语句也不会全表扫描。
 
-![覆盖索引](img/覆盖索引.png)mysql in走索引吗？有时走有时不走
+![Index ABC](http://hongchengjian.gitee.io/md/img/db/Index%20ABC.png)mysql in走索引吗？有时走有时不走
 
 ### MySQL复合索引ABC问题
 
@@ -5726,7 +5724,7 @@ b没有用到索引，排序中a也没有发挥索引效果
 
 B+Tree按照第一个key进行索引排列
 
-![复合索引最左原则的底层原理](img/复合索引最左原则的底层原理.png)
+![Complex Index](http://hongchengjian.gitee.io/md/img/db/Complex%20Index.png)
 
 索引看distinct占比，index加在distinct rows区分度比较高的字段，占比不高的字段<30%不适合建立索引，不如全表扫快。不要为逻辑写复杂sql用聚合、计算函数放弃单列索引，因为对单列索引进行计算、聚合等函数操作会使索引失效，复合索引的字段一般不要超过3个，比如A、B、C字段区分度相差比较均匀，且都<30%不能明显区分表数据，如A占20%区分度，B占10%区分度，C占15%区分度，适合对 (A,C,B)建复合索引观察查询效率，注意distinct占比高要左倾。单列索引遇到null要避免条件查询传入的条件字段值也为null，不然大表就可能直接全表扫。组合索引（A,B,C）时，带头大哥A不能死，有A,AB,*ABC*三种组合。极端情况AC，A和C也会使用索引，前提是B要有序；普通情况下，A走索引，C不走索引。https://www.cnblogs.com/codeAB/p/6387148.html
 
@@ -5791,7 +5789,7 @@ select concat(key,concat('\073',key)) from dual;
 
 ### MySQL join
 
-![join](img/join.png)
+![join](http://hongchengjian.gitee.io/md/img/db/join.png)
 
 inner join的连接中,mysql会自己评估使用a表查b表的效率高还是b表查a表高，如果两个表都建有索引的情况下，mysql同样会评估使用a表条件字段上的索引效率高还是b表
 
