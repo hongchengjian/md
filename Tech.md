@@ -6596,6 +6596,7 @@ select * from tb1 a inner join tb2 b on a.id=b.id  inner join 参照表a中的�
 搜索：command + f
 ： Alt + Shift + K 	
 √： Alt + v
+显示Outline大纲：
 ```
 
 ## Mac Pro
