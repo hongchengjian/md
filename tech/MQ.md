@@ -16,29 +16,46 @@ RabbitMQ
 
 ### RTMP
 
+## 消息模式
 
+```css
+(1)一对一：点对点 消费者主动拉取消息，消息收到后消息清除
+类似Flume：消息可以给多个人，前提是Flume要多个channel、多个sink
+消息生产者生产消息发送到Queue中，然后消费者从Queue中取出并且消费消息。消息被消费后，queue中不在有存储，所以消费者不可能消费到已经被消费的消息。
+(2)Pub/Sub模式：一对多，消费者消费数据之后不会清除消息
+消息生产者(Pub)将消息发布到topoc中，同时有多个消息消费者(Sub)消费该消息。和点对点不同，发布到topic的消息会被所有订阅者消费。
+Ex.公众号管理员推数据给订阅者，推的问题：生产者推给消息队列(瓶颈在生产者) ---> 消息队列推给消费者(瓶颈推由当前队列决定，Ex.消息队列固定推50M/s，而有的订阅者10M/s消费能力会被压崩，有的订阅者100M/s会造成资源浪费)
 
-
+所以发布订阅模式中有另外一种消费模式：消费者主动拉取，Kafka是消费者主动拉取的模式，由消费者决定消费速度。拉取模式的缺点：消费者需要长时间轮询队列是否有消息，比较浪费资源。即使没有消息时，需要长时间轮询队列是否有消息。
+类似Flume：sink从channel长轮询看channel中是否有消息
+```
 
 ## 为什么要用MQ？
 
-削峰：上游流量大、下游扛不住
+同步处理弊端：client、server必须同时在线才能通信，其中任意一个不在线就不能通信。
 
-解耦：支持业务扩展
+异步：存队列时不需要立即处理，在需要时取队列数据才处理，好处：（1）解耦，不需要两方同时在线（2）发的快，收的慢，削峰有助于控制和优化数据流经过系统的速度，解决生产消息和消费消息处理速度不一致，生产大于消费。
+
+削峰：上游流量大、下游扛不住
 
 冗余：一对多，一个生成者，多个订阅Topic
 
-健壮：消息积压
+灵活性：动态上线、下线机器，比如加入双11
 
-异步：存队列时不需要立即处理，在需要时取队列数据才处理
+健壮：消息积压，系统一部分组件失效，不会影响到整个系统。即使一个处理消息的进程挂掉，加入队列中的消息仍然可以在系统恢复后被处理。
 
-消息一致性：利用事务，账号转账如系统A扣钱，系统B加钱
+消息一致性：利用事务，账号转账如系统A扣钱，系统B加钱。
 
 VS：数据库一致性是事务完成，所有数据具有一致状态。
 
 CAP 分区容忍性partition tolerance：数据在不同网络子网，一个子网挂了，其他子网能访问到这个数据，常用保障方法是多个副本复制。
 
 ## VS
+
+```css
+几种MQ优缺
+点对点 VS Pub/Sub(pull VS push)
+```
 
 
 
@@ -66,11 +83,31 @@ Kafka消费时网络异常，重试，超过重试次数进行人工处理。
 
 ## Kafka
 
-https://www.cnblogs.com/huxi2b/p/6223228.html
+### 定义和适用场景
+
+```css
+kafka是一个分布式基于Pub/Sub模式的消息队列(先进先出顺序保证)，主要应用于大数据(收集日志、监控信息、埋点)实时处理领域。90%Spark Streaming来源于kafka。
+```
 
 LinkIn研发处理流式数据，Kafka一个topic可以分成多个Partition，一个topic可以被多个group消费，**每个Partition只能对应一个消费者消费**，Partition每个消息对应唯一的offset。
 
-### 版本
+### 架构
+
+```
+Flume:source channel sink
+消息：一行数据
+生产者：
+消费者：
+broker:服务器，只是服务器起了一个kafka进程；只做broker，不做消息分类，Ex.多个系统的数据会混合在一块
+Topic:在broker里对数据做分类
+
+Partition:提供同一个Topic的负载均衡，同一个Topic的多个partition不是传给同一个机器
+VS MR Partition(提高reducer并发度) VS Hive Partition(查询减少数据量)
+```
+
+
+
+### 版本差异
 
 ```css
 Kafka 2.10/2.11 不是Kafka的版本，而是编译Kafka的Scala版本
@@ -78,21 +115,6 @@ Kafka Server端是Scala编写，Scala主流3个版本分别是2.10、2.11、2.12
 Kafka广泛使用的版本：0.8.x、0.9.x、0.10.* 
 Kafka 0.9.x之前：提供ConsumerConnector、ZookeeperConsumerConnector以及SimpleConsumer，Consumer是Scala编写，包名结构是kafka.consumer.*，分为high-level consumer和low-level consumer 
 Kafka 0.9.x开始提供Java版本的Consumer，新版本Consumer可以独立部署，不再需要依赖Server端代码，提供KafkaConsumer和ConsumerRecord，包名结构是o.a.k.clients.consumer.*
-```
-
-
-
-### 适用场景
-
-收集日志、监控信息、埋点
-
-这部分是较老版本的，待处理整理清楚。  通过Zookeeper维护offset，消费端维护offset，持久化属于日志型持久化默认7天删除消息。
-
-consumer加入group，
-
-```java
-@KafkaListener(id="test1",topics = "test-topic", containerFactory="kafkaListenerContainerFactory1")
-@KafkaListener(id="test2",topics = "test-topic", containerFactory="kafkaListenerContainerFactory2")
 ```
 
 ### Kafka支持事务？
@@ -129,7 +151,7 @@ Zero-Copy 零拷贝技术
 
 ### 有序消费
 
-![Kafka Ordering Consume](http://hongchengjian.gitee.io/md/img/mq/Kafka%20Ordering%20Comsume.png)
+
 
 ### ISR、AR代表什么？ISR伸缩？
 

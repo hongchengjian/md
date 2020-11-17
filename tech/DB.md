@@ -128,6 +128,7 @@ Flink创始人意识到：流计算作为所有计算场景的抽象。
 ```css
 数据源：Kafka、NSQ(go中间件上层封了Java Client)
 ZanKV兼容分布式Redis协议 YARN部署Single Job模式(每个任务起一个ApllicationMaster隔离性好)
+背景很多服务都只暴露了Dubbo接口，在Flink应用中使用Spring
 ```
 
 ## Flink 探索
@@ -139,6 +140,17 @@ ZanKV兼容分布式Redis协议 YARN部署Single Job模式(每个任务起一个
 微服务的状态存储在外部数据库中，用Flink 状态管理起外部数据库中的数据，Exactly-once模拟事务的方向
 ```
 
+## Flink展望
+
+```css
+(1)实时SQL 之前基于SDK，未来会基于Flink的SQL Client做二次开发
+(2)Flink批处理尝试 将Flink批处理能力服务化，VS Spark SQL优劣
+(3)Flink ML尝试 VS Spark MLlib
+(4)调度和资源管理 Flink将调度器独立成插拔式的模块 资源管理的动态Auto Scaling
+```
+
+
+
 ## Flink在YARN上部署
 
 ```css
@@ -148,6 +160,15 @@ Flink ResourceManager会向YARN申请容器
 计数器 积压的容器申请
 AMRMClient(申请容器)、CallbackHandler(1.当YARN资源申请好时通知Flink Resource Manager 2.当容器异常退出时，也会通知FLink Resource Manager)
 ```
+
+## Flink CEP
+
+```css
+优势：跨事件的复杂处理 缺陷：无法动态修改规则
+
+```
+
+
 
 ## Flink使用问题
 
@@ -196,16 +217,54 @@ Ex. Pending Slot是6，pending request container当是3正好满足需求，当>
 
 ### (2)延时监控
 
-```css
 一个简单的任务图：2个Resource、2个算子operator、2个并行度
-
 延时监控数据计算：每个Resource子任务 每个算子的子任务 2个算子之间的延迟
-N = n(subtasks per source) * n(source) * n(subtasks per operator) * n(operator)
+$N = n_{(subtasks per source) }* n_{(source)} * n_{(subtasks per operator) }* n_{(operator)}$
+假source和算子的并行度都为p，可简化为 $N = p^2 * n_{source} * n_{(operator)} $
+2个source，2个除了source以外的operator，10个并行度，会收到400条延迟相关的消息。
+有一个用户在Mailing List里反馈，开启latency tracking之后JobMaster很快就会挂掉。
+24000+  1.6G+(存储监控数据的ConcurrenceHashMap)
+开Application Master一般配置2G，光延迟相关的监控就占用了1.6G，不能容忍
 
-假source和算子的并行度都为p，可简化为 N = p
-```
 
 
+解决方案一：关掉延迟监控，但无法感知到任务的延迟，也无法针对延迟去做监控
+解决方案二：
+Flink-10243 配置监控的粒度(不再测从每一个source的子任务到每一个算子的子任务之间的延迟，只测每个算子所有消息进来的延迟是多少)，从源头上减少监控的数量
+$N_single = n_{subtasks per operator} * n_{(operator)} $  400 => 20
+Flink-10246 改进的MetricQueryService
+Flink-10247 & Flink-10253 & Flink-10602:为监控相关的服务建立一个低优先级的ActorSystem，防止影响主要组件
+Flink-10252 reviewing：控制监控消息的大小
+
+### (3)用户代码中启用SpringContext，在Task执行过程中去获取Bean
+
+本身就不在同一个JVM，肯定获取不到
+
+### (4)在实际执行function的open方法中通过配置文件获取SpringContext
+
+一个TaskManager有3个Task Slot，每个Task Slot都可能会启动一个SpringContext，因一个JVM启动2个SpringContext会出问题
+
+一个TaskManager只启一个Task Slot也不行，OperationChain会将窄依赖的算子嵌到一个Operator中
+
+CoLocationGroup会把几个Sub Task放到一个Task Slot中去执行，这样优化并行度
+
+解决方案：
+
+封了单例的SpringContext，在算子的open方法中获取这个单例来获取相应的Bean
+
+### (5)用Dubbo服务的吞吐
+
+一个Dubbo服务调用10ms-500ms，吞吐量限制在100
+
+多次调用返回同一个值做缓存
+
+考虑异步去做提升吞吐量，实际Flink异步不支持KeyedState
+
+RichAsyncFunction不支持使用Flink KeyedState
+
+方法一：将缓存放到heap中做LRU cache，就没办法利用到Flink对state的管理能力
+
+方法二：改变KeyedState的指向，继承AbstractRichFunction，实现AsyncFunction
 
 # Spark
 
