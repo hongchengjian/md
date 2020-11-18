@@ -7,11 +7,11 @@
 # NoSQL
 
 ```css
-Not only SQL分四类
-(1)KV存储
-(2)列存储
+Not only SQL四类
+(1)KV存储：Memcached、Redis、Flare
+(2)列存储：Hbase、Cassandra
 (3)图形存储
-(4)文档存储
+(4)文档存储：MongoDB、CouchDB
 ```
 
 # 选型
@@ -24,22 +24,32 @@ Not only SQL分四类
 | 协议           |       |        |           |       | Custom, binary（ BSON） |            |          |         |             |      |      |
 | 开发语言       |       |        |           |       | C++                     |            |          |         |             |      |      |
 
+## 说明
+
+```css
+WAL Write Ahead Log预写日志，所有修改在提交之前都要先写入log文件中，log文件包括redo和undo，若事务失败，WAL中的记录会被忽略，撤销修改；若事务成功，将在随后的某个时间被写回到数据库文件中，提交修改。
+
+数据库最大挑战是磁盘读写，方案三种：随机读写顺序读写，缓冲单条读写改批量读写，单线程读写改并发读写
+```
+
 
 
 ![DB VS](http://hongchengjian.gitee.io/md/img/db/DB%20VS.png)
 
-上面的图其实并没有啥鸟用？
+上面的图其实并没有啥用？过于笼统待删除
 
 ## Storm VS Flink VS Spark Streaming
 
 ```css
+Flink具有如下优势
 (1)性能(延迟、吞吐、State)
 Storm吞吐量不大，开发成本高，SQL支持不好，状态管理没优势
 Spark Streaming 微批，达不到纯流式样引擎效果
 Spark Streaming中间状态全部在内存，Flink 借助于rocksdb(分布式缓存系统)支持吞吐量更大，保存更多状态
 
-(2)SQL支持(一个query包含多个聚合，Distinct去重，窗口)
-Spark Streaming一个Query多个聚合会抛异常(一个Query只能包含一个聚合)
+(2)Flink SQL支持(一个query包含多个聚合，Distinct去重，窗口)
+Spark Streaming一个Query多个聚合会抛异常(Spark Streaming一个Query只能包含一个聚合)
+Spark Streaming窗口操作之后无法管理offset，因offset存储于HasOffsetRanges，只有KafkaRDD extends HasOffsetRanges，对KafkaRDD进行转化之后就无法再获取offset了
 Spark Streaming不支持去重
 Flink窗口 dataFlow输出覆盖支持场景更多
 
@@ -151,7 +161,7 @@ ZanKV兼容分布式Redis协议 YARN部署Single Job模式(每个任务起一个
 
 
 
-## Flink在YARN上部署
+## Flink在Yarn上部署
 
 ```css
 TaskExecutor实际任务的执行者，会启动Slot，每个Slot对应具体的子任务，会将自己的状态汇报给Resource Manager

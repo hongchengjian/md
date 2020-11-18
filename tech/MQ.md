@@ -1,4 +1,4 @@
-# MQ
+### MQ
 
 ## 消息协议
 
@@ -89,20 +89,70 @@ Kafka消费时网络异常，重试，超过重试次数进行人工处理。
 kafka是一个分布式基于Pub/Sub模式的消息队列(先进先出顺序保证)，主要应用于大数据(收集日志、监控信息、埋点)实时处理领域。90%Spark Streaming来源于kafka。
 ```
 
-LinkIn研发处理流式数据，Kafka一个topic可以分成多个Partition，一个topic可以被多个group消费，**每个Partition只能对应一个消费者消费**，Partition每个消息对应唯一的offset。
+LinkIn研发处理流式数据，Kafka一个topic可以分成多个Partition，一个topic可以被多个group消费，**每个Partition只被一个消费组里的一个消费者消费**，Partition每个消息对应唯一的offset。
 
 ### 架构
 
-```
-Flume:source channel sink
+```css
+Flume:source, channel, sink
 消息：一行数据
-生产者：
-消费者：
-broker:服务器，只是服务器起了一个kafka进程；只做broker，不做消息分类，Ex.多个系统的数据会混合在一块
-Topic:在broker里对数据做分类
+生产者
+消费者
 
-Partition:提供同一个Topic的负载均衡，同一个Topic的多个partition不是传给同一个机器
-VS MR Partition(提高reducer并发度) VS Hive Partition(查询减少数据量)
+broker:服务器，只是服务器起了一个kafka进程；其中只做broker，不做消息分类，多个系统的消息数据会混合在一块
+Topic:在broker里对数据做分类.(1)Topic有分区 Partition(2)每个分区Partition是有副本(Leader和Follower)
+
+生产者往一个不存在的Topic里发消息也能发，系统会自己创建server.properties中定义的一个分区一个副本
+
+Partition:Ex.Partition 0和Partition 1，提供同一个Topic的负载均衡，提高并发度，同一个Topic的多个partition不是传给同一个机器
+VS MR Partition(提高reducer并发度) VS Hive Partition(查询减少读取数据量)
+
+Leader针对的是Partition，不是针对集群的Leader，若Leader挂了，将另一个Follower提升为Leader，所以Leader和Follower一定不在同一台机器(同一个broker)，因为一台机器挂了，即使存多份在同一台也是没有意义的。Kafka有暂存功能，HDFS DataNode副本没有Leader和Follower，3台机器可以搞10个副本，DataNode中连任意一份副本都可以。而Kafka中生产者和消费者只找Leader，Follower仅起备份。
+
+Replication做副本数据冗余
+
+Consumer Group:多个消费可以放一个组，好处是提高消费消息能力
+注意⚠️:一个Partition只能被一个消费者组Consumer Group里的某一个Consumer消费 
+Ex1.在Topic A可以被Consumer A消费情况下，Topic A不能同时被Consumer B消费，但是Topic A可以同时被Consumer C消费(因Consumer A和Consumer C不在同一个Consumer Group)
+
+Ex2.Consumer Group里若只有Consumer A(没有Consumer B)，Consumer A订阅的是Topic A的情况下，Topic A Patition 0和Topic A Patition 1都要被Consumer A消费，注意只连Leader，不会连Follower
+
+Ex3.Consumer A、Consumer B、Consumer C都是订阅Topic A，Topic A有2个Partition情况下，则Consumer C空转浪费资源
+
+消费者个数 > 主题的分区个数，浪费多出的消费者资源
+并发度最好情况：消费者组里的个数和主题的分区数相等时
+```
+
+
+
+```css
+记录offset作用：当消费出问题了，可以下次从中断处接着消费。
+0.9版本之前offset存储在ZK
+0.9版本之后offset存储在kafka本地(存储在系统创建的Topic，存在磁盘默认保留7天，不是存在内存)
+
+为什么从ZK改到Kafka？
+消费者要和Kafka集群中Topic Partition Leader通信，消费者拉取速度快必须和ZK交互频繁，并发高时ZK效率不高
+```
+
+### 命令行
+
+```css
+命令行一般做测试用，改文件../config/consumer.properties、server.properties，但在代码里一般直接写配置，不会改配置文件
+```
+
+### server.properties
+
+```shell
+# 必须是integer
+Broker.id=0
+# 可以删除topic
+delete.topoc.enable=true
+# kafka暂存数据的目录
+log.dirs=/tmp/
+# 数据保存时间
+log.retention.hours=168
+
+zookeeper.connection=hadoop101:11,hadoop102:12,hadoop103:13
 ```
 
 
@@ -110,7 +160,7 @@ VS MR Partition(提高reducer并发度) VS Hive Partition(查询减少数据量)
 ### 版本差异
 
 ```css
-Kafka 2.10/2.11 不是Kafka的版本，而是编译Kafka的Scala版本
+Kafka 2.10/2.11 不是Kafka版本，而是Scala版本
 Kafka Server端是Scala编写，Scala主流3个版本分别是2.10、2.11、2.12，Kafka现在每个PULL request都已经自动增加了这三个版本的检查
 Kafka广泛使用的版本：0.8.x、0.9.x、0.10.* 
 Kafka 0.9.x之前：提供ConsumerConnector、ZookeeperConsumerConnector以及SimpleConsumer，Consumer是Scala编写，包名结构是kafka.consumer.*，分为high-level consumer和low-level consumer 
