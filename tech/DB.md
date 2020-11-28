@@ -43,7 +43,7 @@ WAL Write Ahead Log预写日志，所有修改在提交之前都要先写入log�
 ```css
 Flink具有如下优势
 (1)性能(延迟、吞吐、State)
-Storm吞吐量不大，开发成本高，SQL支持不好，状态管理没优势
+Storm吞吐量不大，开发成本高，SQL支持不好，状态管理没优势(状态可以依赖Redis)
 Spark Streaming 微批，达不到纯流式样引擎效果
 Spark Streaming中间状态全部在内存，Flink 借助于rocksdb(分布式缓存系统)支持吞吐量更大，保存更多状态
 
@@ -57,7 +57,7 @@ Flink窗口 dataFlow输出覆盖支持场景更多
 Spark Streaming一套API是table，一套API是Dstream，table和Dstream无法相互转换，而Flink可以相互转换
 
 (4)复杂事件处理
-CEP
+Flink有CEP
 ```
 
 ### Flink优势
@@ -141,7 +141,67 @@ ZanKV兼容分布式Redis协议 YARN部署Single Job模式(每个任务起一个
 背景很多服务都只暴露了Dubbo接口，在Flink应用中使用Spring
 ```
 
-## Flink 探索
+### 汇智
+
+```css
+规则引擎：规则匹配和规则处理
+数据来源于Kafka/DataHub
+业务系统是一个Web页面，用户用来定义规则，有一台接口服务器跟业务系统交互，接受规则存在数据库
+动态规则，Job运行过程中增加修改删除规则
+```
+
+#### 商品统计
+
+```css
+场景1:商品统计
+假设Kafka中的product_sell表记录是商品的销售信息，需求是客户在业务系统页面输入需要监控的商品号，一旦有该商品的销售信息，必须实时反馈给业务系统
+思路1:
+每当从业务系统接收到一个需要监控的商品起一个Job select * from product_sell where product_id = XXX
+撤销监控时删除Job 
+缺陷：要为每种商品各起一个Job，并且要经常启动和删除Job
+
+思路2:
+阿里实时计算Flink中维表join实现
+要将监控的商品保存在维表中 select * from product_sell,monitor_products where product_sell.product_id = monitor_products.product_id
+缺陷：每来一次数据去查一次维表，速度太慢，若将维表内容到内存，如何同步是问题：(1)同步太频繁，则太浪费资源(2)同步间隔太久，则做不到实时更新
+
+思路3:
+用UDF来定制实现:
+规则保存在Oracle，Job启动时，在UDF的open方法里，把规则从Oracle加载到内存
+同时，起一个ZK 监听器，当接受到服务器传来的增加/修改/删除规则请求时，把新的规则加载到内存，当数据从Kafka过来时，直接将商品编号与内存中的比较，若存在内存中，则返回true
+udf伪代码
+public class ProductMatch extends ScalaFunction{
+  private List<String> productIds;
+  public open(){
+    zookeeper.monitor((operation,productId) -> {
+      if("add".equals(operation)){
+        productIds.add(productId);
+      }
+    }
+  }
+  
+  public boolean eval(String productId){
+    return productIds.contains(productId);
+  }
+}
+
+SQL
+select from product_sell where Product_Match(product);
+```
+
+#### 实时在线统计
+
+```css
+场景2:实时在线统计
+有一个App会不定时地向服务器上传位置(上报字段包括uid,lon,lat)，上报的位置存在Kafka lbs表里
+需求：根据APP上报的位置，每5分钟统计一次重点关注区域(例如某学校、某商场)有多少用户实时在线。
+思考：select count(uid) from lbs where is_in_area(lon,lat);
+该语句只是算出进入该区域有多少人次，而不是计算出当前有多少人在线
+```
+
+
+
+##Flink 探索
 
 ```css
 （1）机器学习PS(Parameter Server)架构：不再需要专门的参数管理服务器来管理参数，取代的是用Flink的状态管理参数，Flink Delta Iteration增量进行参数的更新，效果是优化后处理规模是其他计算引擎的规模十倍以上。
