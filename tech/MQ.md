@@ -1,3 +1,66 @@
+
+
+Table of Contents
+=================
+
+* [MQ](#mq)
+  * [为什么要用MQ？](#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E7%94%A8mq)
+  * [消息协议](#%E6%B6%88%E6%81%AF%E5%8D%8F%E8%AE%AE)
+    * [TCP](#tcp)
+    * [MQTT](#mqtt)
+    * [AMQP](#amqp)
+    * [RTMP](#rtmp)
+  * [消息模式](#%E6%B6%88%E6%81%AF%E6%A8%A1%E5%BC%8F)
+  * [VS](#vs)
+  * [常见发送问题和错误方案：](#%E5%B8%B8%E8%A7%81%E5%8F%91%E9%80%81%E9%97%AE%E9%A2%98%E5%92%8C%E9%94%99%E8%AF%AF%E6%96%B9%E6%A1%88)
+  * [常见消费失败问题：](#%E5%B8%B8%E8%A7%81%E6%B6%88%E8%B4%B9%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98)
+    * [（1）Kafka](#1kafka)
+    * [（2）RabbitMQ](#2rabbitmq)
+  * [Kafka](#kafka)
+    * [定义和适用场景](#%E5%AE%9A%E4%B9%89%E5%92%8C%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF)
+    * [架构](#%E6%9E%B6%E6%9E%84)
+    * [命令行](#%E5%91%BD%E4%BB%A4%E8%A1%8C)
+    * [server\.properties](#serverproperties)
+    * [版本差异](#%E7%89%88%E6%9C%AC%E5%B7%AE%E5%BC%82)
+    * [Kafka支持事务？](#kafka%E6%94%AF%E6%8C%81%E4%BA%8B%E5%8A%A1)
+    * [Kafka支持消息优先级](#kafka%E6%94%AF%E6%8C%81%E6%B6%88%E6%81%AF%E4%BC%98%E5%85%88%E7%BA%A7)
+    * [为什么Kafka那么快？](#%E4%B8%BA%E4%BB%80%E4%B9%88kafka%E9%82%A3%E4%B9%88%E5%BF%AB)
+    * [Zero\-Copy 零拷贝](#zero-copy-%E9%9B%B6%E6%8B%B7%E8%B4%9D)
+      * [什么是Zero\-Copy 零拷贝？](#%E4%BB%80%E4%B9%88%E6%98%AFzero-copy-%E9%9B%B6%E6%8B%B7%E8%B4%9D)
+      * [Zero\-Copy需要CPU？](#zero-copy%E9%9C%80%E8%A6%81cpu)
+      * [Pull VS Post](#pull-vs-post)
+    * [有序消费](#%E6%9C%89%E5%BA%8F%E6%B6%88%E8%B4%B9)
+    * [ISR、AR代表什么？ISR伸缩？](#israr%E4%BB%A3%E8%A1%A8%E4%BB%80%E4%B9%88isr%E4%BC%B8%E7%BC%A9)
+    * [Broker消息代理](#broker%E6%B6%88%E6%81%AF%E4%BB%A3%E7%90%86)
+    * [Kafka选举基于Broker还是Group？](#kafka%E9%80%89%E4%B8%BE%E5%9F%BA%E4%BA%8Ebroker%E8%BF%98%E6%98%AFgroup)
+    * [ConsumerGroup中新加Consumer、移除Consumer、Consumer崩溃时发生Rebalance](#consumergroup%E4%B8%AD%E6%96%B0%E5%8A%A0consumer%E7%A7%BB%E9%99%A4consumerconsumer%E5%B4%A9%E6%BA%83%E6%97%B6%E5%8F%91%E7%94%9Frebalance)
+    * [Kafka为什么不将offset保存Broker维护？而是在Partition维护？](#kafka%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E5%B0%86offset%E4%BF%9D%E5%AD%98broker%E7%BB%B4%E6%8A%A4%E8%80%8C%E6%98%AF%E5%9C%A8partition%E7%BB%B4%E6%8A%A4)
+  * [RabbitMQ](#rabbitmq)
+    * [模型](#%E6%A8%A1%E5%9E%8B)
+    * [顺序消费(RabbitMQ本身缺少顺序消费机制)](#%E9%A1%BA%E5%BA%8F%E6%B6%88%E8%B4%B9rabbitmq%E6%9C%AC%E8%BA%AB%E7%BC%BA%E5%B0%91%E9%A1%BA%E5%BA%8F%E6%B6%88%E8%B4%B9%E6%9C%BA%E5%88%B6)
+    * [重复消费出现场景](#%E9%87%8D%E5%A4%8D%E6%B6%88%E8%B4%B9%E5%87%BA%E7%8E%B0%E5%9C%BA%E6%99%AF)
+    * [解决重复消费](#%E8%A7%A3%E5%86%B3%E9%87%8D%E5%A4%8D%E6%B6%88%E8%B4%B9)
+    * [消费失败处理](#%E6%B6%88%E8%B4%B9%E5%A4%B1%E8%B4%A5%E5%A4%84%E7%90%86)
+    * [死信队列原理](#%E6%AD%BB%E4%BF%A1%E9%98%9F%E5%88%97%E5%8E%9F%E7%90%86)
+      * [死信几种情况](#%E6%AD%BB%E4%BF%A1%E5%87%A0%E7%A7%8D%E6%83%85%E5%86%B5)
+    * [RabbitMQ的事务（Confirm模式要比事务快10倍）](#rabbitmq%E7%9A%84%E4%BA%8B%E5%8A%A1confirm%E6%A8%A1%E5%BC%8F%E8%A6%81%E6%AF%94%E4%BA%8B%E5%8A%A1%E5%BF%AB10%E5%80%8D)
+      * [（1）AMQP的事务机制](#1amqp%E7%9A%84%E4%BA%8B%E5%8A%A1%E6%9C%BA%E5%88%B6)
+      * [（2）发送者确认模式实现](#2%E5%8F%91%E9%80%81%E8%80%85%E7%A1%AE%E8%AE%A4%E6%A8%A1%E5%BC%8F%E5%AE%9E%E7%8E%B0)
+  * [RocketMQ](#rocketmq)
+    * [消息协议](#%E6%B6%88%E6%81%AF%E5%8D%8F%E8%AE%AE-1)
+    * [事务原理](#%E4%BA%8B%E5%8A%A1%E5%8E%9F%E7%90%86)
+    * [顺序消息原理](#%E9%A1%BA%E5%BA%8F%E6%B6%88%E6%81%AF%E5%8E%9F%E7%90%86)
+    * [延时消息解决方案](#%E5%BB%B6%E6%97%B6%E6%B6%88%E6%81%AF%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88)
+    * [延时消息场景](#%E5%BB%B6%E6%97%B6%E6%B6%88%E6%81%AF%E5%9C%BA%E6%99%AF)
+    * [延时只支持18个level原理](#%E5%BB%B6%E6%97%B6%E5%8F%AA%E6%94%AF%E6%8C%8118%E4%B8%AAlevel%E5%8E%9F%E7%90%86)
+    * [消费方式](#%E6%B6%88%E8%B4%B9%E6%96%B9%E5%BC%8F)
+      * [集群消费（默认）](#%E9%9B%86%E7%BE%A4%E6%B6%88%E8%B4%B9%E9%BB%98%E8%AE%A4)
+      * [广播消费](#%E5%B9%BF%E6%92%AD%E6%B6%88%E8%B4%B9)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
+作者：cj
+
 # MQ
 
 ## 为什么要用MQ？
@@ -28,7 +91,7 @@ CAP 分区容忍性partition tolerance：数据在不同网络子网，一个子
 
 ### MQTT
 
-Message Queuing Telemetry Transport 消息队列遥测传输。基于TCP/IP，Mosquito、
+Message Queuing Telemetry Transport 消息队列遥测传输。基于TCP/IP。
 
 ### AMQP
 
@@ -198,8 +261,6 @@ Pull模式与消费端处理能力相符
 
 Zero-Copy 零拷贝技术
 
-
-
 顺序写 Partition，一个Partition里的消息是有序的
 
 ### Zero-Copy 零拷贝
@@ -252,7 +313,7 @@ Consumer分配5个Partition。
 
 ### 模型
 
-![RabbitMQ Model](http://hongchengjian.gitee.io/md/img/mq/RabbitMQ%20Model.png)
+
 
 ### 顺序消费(RabbitMQ本身缺少顺序消费机制)
 
@@ -289,8 +350,6 @@ $ curl -i -u guest:guest -H "content-type:application/json"  -XPUT -d'{"auto_del
 （3）队列达到最大长度（rabbitMQ的积压能力比较落）
 （4）消费失败时放入（可选情况）
 ```
-
-
 
 ### RabbitMQ的事务（Confirm模式要比事务快10倍）
 

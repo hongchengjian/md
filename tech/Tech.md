@@ -9919,9 +9919,9 @@ Jaccard相似度可作为基础版ICF，sim(A,B) = |ra ∩ rb| / |ra ∪ rb|，r
 (2)全量用户计算两两用户间相似度得分
 (3)对每个用户得分排序，获取到最高的topN用户
 (4)获取topN用户的历史行为item并与目标用户的item做去重
-(5)将去重后的item存入以目标用户为key的redis中，userid:"item1,item2,item3...."
+(5)将去重后的item存入以目标用户为key的Redis中，userid:"item1,item2,item3...."
 在线
-(1)获取用户id，读redis拿物料召回
+(1)获取用户id，读Redis拿物料召回
 
 ```
 
@@ -9933,7 +9933,7 @@ Lucence倒排原理
 
 Elasticsearch倒排原理
 
-Lucence VS Elasticsearch VS Solr
+### Lucence VS Elasticsearch VS Solr
 
 Elasticsearch是一个Push replication，完全支持Lucence接近实时搜索，支持全文搜索，仅支持JSON格式。
 

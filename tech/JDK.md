@@ -1,4 +1,56 @@
-# JDK 
+
+
+Table of Contents
+=================
+
+* [JDK](#jdk)
+  * [逃逸分析](#%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90)
+  * [JDK 1\.0\.2](#jdk-102)
+  * [JDK 1\.2](#jdk-12)
+    * [引入双亲委派模型](#%E5%BC%95%E5%85%A5%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE%E6%A8%A1%E5%9E%8B)
+    * [扩充引用](#%E6%89%A9%E5%85%85%E5%BC%95%E7%94%A8)
+  * [JDK 1\.4](#jdk-14)
+  * [JDK 1\.5](#jdk-15)
+    * [引入两个新的reference types](#%E5%BC%95%E5%85%A5%E4%B8%A4%E4%B8%AA%E6%96%B0%E7%9A%84reference-types)
+  * [JDK 1\.8](#jdk-18)
+    * [Lambda](#lambda)
+      * [parallstream 遍历无序](#parallstream-%E9%81%8D%E5%8E%86%E6%97%A0%E5%BA%8F)
+      * [Stream分类](#stream%E5%88%86%E7%B1%BB)
+      * [Stream原理](#stream%E5%8E%9F%E7%90%86)
+      * [Demo](#demo)
+  * [类的生命周期](#%E7%B1%BB%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F)
+  * [GC分类](#gc%E5%88%86%E7%B1%BB)
+  * [GC日志分析](#gc%E6%97%A5%E5%BF%97%E5%88%86%E6%9E%90)
+    * [工具](#%E5%B7%A5%E5%85%B7)
+    * [命令](#%E5%91%BD%E4%BB%A4)
+  * [Full GC(Major GC) 发生条件](#full-gcmajor-gc-%E5%8F%91%E7%94%9F%E6%9D%A1%E4%BB%B6)
+  * [Minor GC 发生条件](#minor-gc-%E5%8F%91%E7%94%9F%E6%9D%A1%E4%BB%B6)
+  * [G1优势](#g1%E4%BC%98%E5%8A%BF)
+  * [什么时候发生](#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E5%8F%91%E7%94%9F)
+  * [Full GC VS Minor GC](#full-gc-vs-minor-gc)
+  * [Minor GC会stop the world STW？](#minor-gc%E4%BC%9Astop-the-world-stw)
+  * [调优](#%E8%B0%83%E4%BC%98)
+    * [性能优化点](#%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E7%82%B9)
+    * [PretenureSizeThreshold](#pretenuresizethreshold)
+    * [JMM Java Memory Model](#jmm-java-memory-model)
+    * [JVM是对Java内存模型的实现](#jvm%E6%98%AF%E5%AF%B9java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%AE%9E%E7%8E%B0)
+    * [TProfile阿里开源在海量业务代码 精准定位性能代码问题](#tprofile%E9%98%BF%E9%87%8C%E5%BC%80%E6%BA%90%E5%9C%A8%E6%B5%B7%E9%87%8F%E4%B8%9A%E5%8A%A1%E4%BB%A3%E7%A0%81-%E7%B2%BE%E5%87%86%E5%AE%9A%E4%BD%8D%E6%80%A7%E8%83%BD%E4%BB%A3%E7%A0%81%E9%97%AE%E9%A2%98)
+    * [OOM原因](#oom%E5%8E%9F%E5%9B%A0)
+    * [OOM可能发生在JVM哪些区域](#oom%E5%8F%AF%E8%83%BD%E5%8F%91%E7%94%9F%E5%9C%A8jvm%E5%93%AA%E4%BA%9B%E5%8C%BA%E5%9F%9F)
+    * [如何排查OOM](#%E5%A6%82%E4%BD%95%E6%8E%92%E6%9F%A5oom)
+    * [Full GC过程中Stop the World，JVM如何处理](#full-gc%E8%BF%87%E7%A8%8B%E4%B8%ADstop-the-worldjvm%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86)
+    * [Stop the World Minor GC也会发生](#stop-the-world-minor-gc%E4%B9%9F%E4%BC%9A%E5%8F%91%E7%94%9F)
+    * [查看JVM默认参数](#%E6%9F%A5%E7%9C%8Bjvm%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0)
+    * [JVM参数设置](#jvm%E5%8F%82%E6%95%B0%E8%AE%BE%E7%BD%AE)
+    * [jstack 关注线程状态，分析线程执行情况](#jstack-%E5%85%B3%E6%B3%A8%E7%BA%BF%E7%A8%8B%E7%8A%B6%E6%80%81%E5%88%86%E6%9E%90%E7%BA%BF%E7%A8%8B%E6%89%A7%E8%A1%8C%E6%83%85%E5%86%B5)
+    * [分析内存或CPU占用高](#%E5%88%86%E6%9E%90%E5%86%85%E5%AD%98%E6%88%96cpu%E5%8D%A0%E7%94%A8%E9%AB%98)
+    * [jmap查看内存泄漏](#jmap%E6%9F%A5%E7%9C%8B%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
+作者：cj
+
+# JDK
 
 在 HotSpot 主流 OS上，采用模板解释器执行字节码，与JIT 编译器一样，最终执行的汇编代码都是在运行时候产生，无法断点调试。HotSpot 增加了
 

@@ -1,3 +1,49 @@
+Table of Contents
+=================
+
+* [Java基础](#java%E5%9F%BA%E7%A1%80)
+  * [Keywords](#keywords)
+    * [static](#static)
+    * [new](#new)
+    * [final](#final)
+  * [数据类型](#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B)
+    * [Boolean类型 null unbox问题](#boolean%E7%B1%BB%E5%9E%8B-null-unbox%E9%97%AE%E9%A2%98)
+    * [Boolean\.TRUE 和 true  VS 性能](#booleantrue-%E5%92%8C-true--vs-%E6%80%A7%E8%83%BD)
+    * [BigDecimal初始化和比较](#bigdecimal%E5%88%9D%E5%A7%8B%E5%8C%96%E5%92%8C%E6%AF%94%E8%BE%83)
+  * [Java参数值传递和引用传递](#java%E5%8F%82%E6%95%B0%E5%80%BC%E4%BC%A0%E9%80%92%E5%92%8C%E5%BC%95%E7%94%A8%E4%BC%A0%E9%80%92)
+  * [序列化](#%E5%BA%8F%E5%88%97%E5%8C%96)
+  * [带标签break、continue](#%E5%B8%A6%E6%A0%87%E7%AD%BEbreakcontinue)
+  * [时间戳](#%E6%97%B6%E9%97%B4%E6%88%B3)
+  * [数据结构](#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84)
+    * [List](#list)
+    * [for\-each并发修改](#for-each%E5%B9%B6%E5%8F%91%E4%BF%AE%E6%94%B9)
+    * [ListIterator遍历List满足条件添加元素](#listiterator%E9%81%8D%E5%8E%86list%E6%BB%A1%E8%B6%B3%E6%9D%A1%E4%BB%B6%E6%B7%BB%E5%8A%A0%E5%85%83%E7%B4%A0)
+    * [ListIterator源码](#listiterator%E6%BA%90%E7%A0%81)
+    * [ListResourceBundle类实现国际化](#listresourcebundle%E7%B1%BB%E5%AE%9E%E7%8E%B0%E5%9B%BD%E9%99%85%E5%8C%96)
+    * [List转Map](#list%E8%BD%ACmap)
+    * [Java8 List转Map后，key相同，将不同value合并成List](#java8-list%E8%BD%ACmap%E5%90%8Ekey%E7%9B%B8%E5%90%8C%E5%B0%86%E4%B8%8D%E5%90%8Cvalue%E5%90%88%E5%B9%B6%E6%88%90list)
+    * [ArrayList插入大量元素时，在插入前调用ensureCapacity增加ArrayList容量以提高插入效率](#arraylist%E6%8F%92%E5%85%A5%E5%A4%A7%E9%87%8F%E5%85%83%E7%B4%A0%E6%97%B6%E5%9C%A8%E6%8F%92%E5%85%A5%E5%89%8D%E8%B0%83%E7%94%A8ensurecapacity%E5%A2%9E%E5%8A%A0arraylist%E5%AE%B9%E9%87%8F%E4%BB%A5%E6%8F%90%E9%AB%98%E6%8F%92%E5%85%A5%E6%95%88%E7%8E%87)
+    * [List Set Map Collection之间相互转化](#list-set-map-collection%E4%B9%8B%E9%97%B4%E7%9B%B8%E4%BA%92%E8%BD%AC%E5%8C%96)
+    * [List满足条件的元素替换 Collections\.replaceAll](#list%E6%BB%A1%E8%B6%B3%E6%9D%A1%E4%BB%B6%E7%9A%84%E5%85%83%E7%B4%A0%E6%9B%BF%E6%8D%A2-collectionsreplaceall)
+    * [List 和 List&lt;?&gt;](#list-%E5%92%8C-list)
+    * [Collection\.synchronized( )使用注意](#collectionsynchronized-%E4%BD%BF%E7%94%A8%E6%B3%A8%E6%84%8F)
+    * [JDK 1\.7 HasMap的头插死循环原因](#jdk-17-hasmap%E7%9A%84%E5%A4%B4%E6%8F%92%E6%AD%BB%E5%BE%AA%E7%8E%AF%E5%8E%9F%E5%9B%A0)
+  * [注解](#%E6%B3%A8%E8%A7%A3)
+    * [@SuppressWarnings(\{ "rawtypes", "unchecked" \})](#suppresswarnings-rawtypes-unchecked-)
+    * [自定义注解](#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B3%A8%E8%A7%A3)
+  * [SPI Service Provider Interface](#spi-service-provider-interface)
+  * [POI](#poi)
+    * [导出Word解决方案](#%E5%AF%BC%E5%87%BAword%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88)
+  * [Java Agent](#java-agent)
+    * [BTrace原理](#btrace%E5%8E%9F%E7%90%86)
+    * [Arthas加Log调试](#arthas%E5%8A%A0log%E8%B0%83%E8%AF%95)
+  * [JMS规范](#jms%E8%A7%84%E8%8C%83)
+  * [JMS  VS MQ](#jms--vs-mq)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
+作者：cj
+
 # Java基础
 
 ## Keywords
@@ -157,7 +203,7 @@ bigdecimal1.compareTo(bigdecimal2)
 
 ## Java参数值传递和引用传递
 
-```java
+```css
 参数值传递：传递到方法中的数据是参数副本，方法内对参数修改不会影响外部变量。
 受影响：8种基本类型和String。
 
