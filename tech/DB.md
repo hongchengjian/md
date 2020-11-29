@@ -1,8 +1,57 @@
 # NoSQL VS RDMS
 
+## RDMS ACID常见问题
+
+```css
+RDMS ACID————C consistency非常重要 
+Q1:ACID中的C VS CAP中的C VS 数据一致性(贝壳面试题)
+Q2:什么是数据库一致性C？
+Q3:OS层锁与并发控制Atomic VS 数据库层锁与并发控制  粒度、类型、实现方式几个出发点思考
+数据库并发控制自由性更高：选择使用lock，也可以选择commit protocol
+Q4:分布式任务调度下的数据一致性
+commit protocol是允许先做dirty read然后rollback，锁的存在更多是根本不允许事务做dirty read
 ```
 
+```css
+概念角度理解：参考书 Database System Concepts
+实践角度理解：Innodb开源代码
 ```
+
+## RDMS ACID路线和总结
+
+```css
+路线：最基础的一致性C -> Redo保证持久性D、Undo保证原子性A -> 并行事务一致性 -> 引入隔离性I -> 实现隔离性I(悲观和乐观锁) -> 死锁 -> 两阶段锁协议、死锁检测解决死锁
+
+隔离性I悲观 为了性能 粒度(数据库级、表级、行级)  性质(共享锁、排他锁、共享意向锁、排他意向锁、共享排他意向锁)
+隔离性I乐观 不同事务可同时看到同一对象(数据行)的不同历史版本，若两个事务同时修改了同一数据行，在较晚的事务提交时进行冲突检测 两种实现(1)通过日志Undo获取数据行历史版本 (2)在内存中保存同一数据行的多个历史版本，时间戳来区分
+```
+
+
+
+```css
+一致性C是最基础的，其他三个AID是为了保证一致性而存在的。
+数据库实现场景下，一致性C分为数据库外部的一致性(某个应用执行A转账B操作时，必须在同一个事务内部调用对A减和对B增的操作)与数据库内部的一致性(一个事务里的多个操作全部成功或全部失败，部分成功抛错回滚后也是全部失败)
+
+原子性A并不能完全保证一致性C，为了保证事务原子性A，必须通过日志Redo/Undo。所有对数据的更新操作都写入日志，若一个事务中的一部分操作已经成功，但其他的操作由于断电、系统奔溃、软硬件错误无法继续，则通过回溯日志将已经执行成功的操作撤销，达到全部操作失败目的。
+
+数据库系统崩溃后重启，此时数据处于不一致状态，必须先执行crash recovery(ref {待补充详细后url})，读取日志进行Redo(重演将所有已执行成功但尚未写入磁盘的操作，保证持久性D)，再对所有到崩溃时尚未成功提交的事务进行Undo(撤销所有执行一部分呢但尚未提交的操作，保证原子性A)。crash recovery结束后数据库恢复到一致性状态，可以继续被使用。
+
+多个事务并行，即使保证了每一个事务的原子性，仍可能导致数据不一致。
+T1转入A 100，(1)先读A账户值(2)后+100
+在(1)和(2)之间，T2修改了A，+100
+事实是T1最终完成，但A只增加了100，T2的修改被T1覆盖了
+
+为保证并发下的一致性C，引入隔离性I，即多个事务并发执行后的状态与串行执行后的状态是等价的。
+实现
+
+A atomicity:事务里的所有操作是一个整体，要么全部成功做完，要么不做；所有操作中只要有一个操作失败，整个事务就失败。
+C consistency: A转账给B，A的钱减少，B的钱没有增加，数据处于不一致状态
+I Isolation: 多个事务并发执行后的状态与串行执行后的状态是等价的。
+D Durability: 执行成功的操作都会写入磁盘
+
+```
+
+## 高可用：并行处理和分布式系统的日志复制和重演
 
 # NoSQL
 
@@ -13,6 +62,8 @@ Not only SQL四类
 (3)图形存储
 (4)文档存储：MongoDB、CouchDB
 ```
+
+## NoSQL解决了什么问题
 
 # 选型
 
@@ -45,7 +96,7 @@ Flink具有如下优势
 (1)性能(延迟、吞吐、State)
 Storm吞吐量不大，开发成本高，SQL支持不好，状态管理没优势(状态可以依赖Redis)
 Spark Streaming 微批，达不到纯流式样引擎效果
-Spark Streaming中间状态全部在内存，Flink 借助于rocksdb(分布式缓存系统)支持吞吐量更大，保存更多状态
+Spark Streaming 中间状态全部在内存，Flink 借助于rocksdb(分布式缓存系统)支持吞吐量更大，保存更多状态
 
 (2)Flink SQL支持(一个query包含多个聚合，Distinct去重，窗口)
 Spark Streaming一个Query多个聚合会抛异常(Spark Streaming一个Query只能包含一个聚合)
@@ -86,8 +137,6 @@ Runtime层扩展了算子的定义，使得Flink流式的算子能更好地处�
 (12)Flink+Zeppelin Table API和SQL
 
 ```
-
-
 
 ## 流计算 VS 批处理
 
@@ -390,17 +439,11 @@ LEFT SEMI JOIN
 LEFT ANTI JOIN
 ```
 
-# Kylin
-
-
-
-# Storm
-
-# MySQL Oracle
+# MySQL Oracle(去IOE)
 
 ## 连接池 
 
-DBCP, C3P0, BoneCP, Druid, HikariCP(Hikari日语中是光的意思，像光一样快)
+DBCP, C3P0, BoneCP, Druid(凯尔特人的祭司), HikariCP(Hikari日语中是光的意思，像光一样快)
 
 ## 数据库排序算法
 
@@ -546,20 +589,126 @@ SQL语句（效果小）、索引、字段、表设计、主从复制（MySQL re
 (1)定长与非定长对limit影响？
 分页最好不要让别人看到10W条以后的数据，即使用了索引，百万级分页也是极限，一百多万的数据用id in (str)很快
 
-SELECT * FROM table LIMIT 1000000, 10; 分页会很慢，数据库找第1000000条记录的开始id会花费很多时间 SELECT * FROM table ORDER BY id LIMIT 1000000, 10;加了PK索引会稍微快一点 
-优化 SELECT * FROM table WHERE id >= (SELECT id FROM table LIMIT 1000000, 1) LIMIT 10; 
-或进一步优化SELECT * FROM table WHERE id BETWEEN 1000000 AND 1000010;
+SELECT column FROM table LIMIT 1000000, 10; 分页会很慢，数据库找第1000000条记录的开始id会花费很多时间 SELECT column FROM table ORDER BY id LIMIT 1000000, 10;加了PK索引会稍微快一点 
+优化 SELECT column FROM table WHERE id >= (SELECT id FROM table LIMIT 1000000, 1) LIMIT 10; 
+或进一步优化 SELECT column FROM table WHERE id BETWEEN 1000000 AND 1000010;
 
 (2)查询id不是连续的一段，最佳方法是先找到id，再用in查询
 SELECT * FROM table WHERE id IN(10000, 100000, 1000000...);
 
 (3)查询一段较长字符串时，表设计时要多加一字段如对网址的CRC32或MD5，查询时不要直接查字符串而是查CRC32或MD5
 
-(4)混合排序
+(4)前缀索引
+前缀索引一般只能用于普通索引，不能使用在unique
+前缀索引只支持英文和数字
+作用是优化索引的存储空间，查询速度
+有点类似Oracle中对字段使用left()，建立函数索引；MySQL的前缀索引在查询时是内部自动完成匹配，并不需要使用left()
+前缀索引局限：order by, group by, 覆盖索引Covering Index就无法使用
+语法是ALTER TABLE table_name ADD KEY(column_name(prefix_length));
+
+Ex. 
+-- 整字段索引选择性Index Selectivity 0.0042
+select count(distinct first_name) / count(1) from employees; 
+
+-- first_name 前几个字符串的索引选择性Index Selectivity 5:0.0037;  6:0.0041;  7:0.0042;  8:0.0042，可以看出first_name的前缀索引定在了7个字符串，alter table employees add key (first_name(7));
+select count(distinct left(employees.first_name, 5)) / count(1)
+from employees;
+MySQL没有后缀索引，但可以牺牲空间来换，冗余 first_name_reverse 字段存first_name reverse后的值，对first_name_reverse创建前缀索引，等价于实现了一个first_name后缀索引
+
+(5)Covering Index覆盖索引
+-- 数据75W条
+Ex.CREATE TABLE `user_group` (
+  `id` int(11) NOT NULL auto_increment,
+  `uid` int(11) NOT NULL,
+  `group_id` int(11) NOT NULL,
+  PRIMARY KEY  (`id`),
+  KEY `uid` (`uid`),
+  KEY `group_id` (`group_id`),
+) ENGINE=InnoDB AUTO_INCREMENT=750366 DEFAULT CHARSET=utf8;
+
+SELECT SQL_NO_CACHE uid FROM user_group WHERE group_id = 245;
++----+-------------+------------+------+---------------+----------+---------+-------+------+-------+
+| id | select_type | table      | type | possible_keys | key      | key_len | ref   | rows | Extra |
++----+-------------+------------+------+---------------+----------+---------+-------+------+-------
+|  1 | SIMPLE      | user_group | ref  | group_id      | group_id | 4       | const | 5544 |       |
++----+-------------+------------+------+---------------+----------+---------+-------+------+-------
+
+ALTER TABLE user_group ADD INDEX group_id_uid (group_id, uid);
++----+-------------+------------+------+-----------------------+--------------+---------+-------+----
+| id | select_type | table      | type | possible_keys         | key          | key_len | ref   | rows | Extra       |
++----+-------------+------------+------+-----------------------+--------------+---------+-------+--
+
+|  1 | SIMPLE      | user_group | ref  | group_id,group_id_uid | group_id_uid | 4       | const | 5378 | Using index |
++----+-------------+------------+------+-----------------------+--------------+---------+-------+--
+覆盖索引Covering index, MySQL只需通过索引就可以返回查询所需要的数据，而不必在查到索引之后再去查数据。
+但同时要求所查询的字段必须被索引所覆盖到，在Explain时，输出的Extra若有Using Index则表示这条查询用了覆盖索引 Covering index
+
+(6) SQL_NO_CACHE
+SELECT SQL_NO_CACHE column FROM table WHERE id = 1;
+
+混合排序
 https://www.jianshu.com/p/591e15374d09
 ```
 
+## MySQL crash recovery
 
+非正常关闭（数据库实例crash、服务器crash）导致错误日志
+
+正常关闭，所有buffer pool里的脏页都会刷新一遍到磁盘，同时记录最新LSN到ibdata文件第一个page中；而非正常关闭来不及做这些操作，即没及时将脏数据flush到磁盘，也没有记录最新LSN到ibdata file
+
+重启数据库实例时，做2个二阶段：redo log操作，undo log及bin log处理
+
+```mysql
+[Note] InnoDB: Database was not shutdown normally!
+[Note] InnoDB: Starting crash recovery.
+[Note] InnoDB: Reading tablespace information from the .ibd files...
+[ERROR] InnoDB: Attempted to open a previously opened tablespace. Previous tablespace sakila/cou
+ntry uses space ID: 32 at filepath: ./sakila/country.ibd. Cannot open tablespace wordpress/wp_options which uses space ID
+: 32 at filepath: ./wordpress/wp_options.ibd
+ 7f9868b4e780 InnoDB: Operating system error number 2 in a file operation.
+InnoDB: The error means the system cannot find the path specified.
+InnoDB: If you are installing InnoDB, remember that you must create
+InnoDB: directories yourself, InnoDB does not create them.
+InnoDB: Error: could not open single-table tablespace file ./wordpress/wp_options.ibd
+InnoDB: We do not continue the crash recovery, because the table may become
+InnoDB: corrupt if we cannot apply the log records in the InnoDB log to it.
+InnoDB: To fix the problem and start mysqld:
+InnoDB: 1) If there is a permission problem in the file and mysqld cannot
+InnoDB: open the file, you should modify the permissions.
+InnoDB: 2) If the table is not needed, or you can restore it from a backup,
+InnoDB: then you can remove the .ibd file, and InnoDB will do a normal
+InnoDB: crash recovery and ignore that table.
+InnoDB: 3) If the file system or the disk is broken, and you cannot remove
+InnoDB: the .ibd file, you can set innodb_force_recovery > 0 in my.cnf
+InnoDB: and force InnoDB to continue crash recovery here.
+```
+
+```css
+解决方案：
+(1)在my.cnf中添加以下参数
+在[mysqlId]组中加入 innodb_force_recovery=6 后启动MySQL
+
+innodb_force_recovery影响整个InnoDB恢复状况，默认值为0，表示当需要恢复时执行所有的恢复操作。
+当不能进行有效的恢复操作时，MySQL有可能无法启动，并记录下错误日志。
+
+innodb_force_recovery可以设置为1-6,大的数字包含前面所有数字的影响。
+当设置参数值大于0后，允许对表select,create,drop,但不允许insert,update或者delete。
+
+说明：
+1(SRV_FORCE_IGNORE_CORRUPT):忽略检查到的corrupt页
+2(SRV_FORCE_NO_BACKGROUND):阻止主线程的运行，如主线程需要执行full purge操作，会导致crash
+3(SRV_FORCE_NO_TRX_UNDO):不执行事务回滚操作。
+4(SRV_FORCE_NO_IBUF_MERGE):不执行插入缓冲的合并操作。
+5(SRV_FORCE_NO_UNDO_LOG_SCAN):不查看重做日志，InnoDB存储引擎会将未提交的事务视为已提交。
+6(SRV_FORCE_NO_LOG_REDO):不执行前滚的操作。
+(2)备份
+mysqldump SECHMANAME > BackUpXX.sql
+(3)删物理文件
+(4)重启MySQL
+(5)导入备份BackUpXX.sql
+原库SECHMANAME无法导入提示已存在，手动删除后导入还提示idb文件已存在
+但导入其他库正常，修改配置文件里的数据库为新库，之后重新授权新库
+```
 
 ## binlog
 
@@ -571,6 +720,19 @@ Server层日志系统，binlog中跟踪对数据库的所有更改操作，是�
 statement记录SQL语句原文，风险点是若主从用到的索引不同，操作带limit时，处理可能时不同行的记录数据
 row仅记录某条记录数据修改细节，不关系上下文，缺陷占用空间，同时写binlog很耗IO，影响执行速度
 mixed一般语句使用statement保存，若使用了函数，statement无法完成主从复制，采用row格式。MySQL会判断SQL语句是否可能引起主备不一致，有则用row，否则用statement
+```
+
+### 开启binlog
+
+```css
+[mysqld] 
+     ...... 
+     log_bin = mysql_bin 
+     ...... 
+     // log_bin是生成的bin-log的文件名，后缀则是6位数字编码，从000001开始，生成的文件则为： 
+     mysql_bin.000001 
+     mysql_bin.000002 
+ 配置保存后重启MySQL，show variables like '%bin%';查看bin-log是否开启看参数log_bin是否是ON？
 ```
 
 ### Kafka binlog全局有序
@@ -698,9 +860,36 @@ Note:
 Prior to MySQL 5.6.7, 64-bit Windows platforms truncated the stored value for this variable max_binlog_cache_size to 4G, even when it was set to a greater value (Bug #13961678).
 ```
 
+### show binlog events;
+
+```mysql
+mysql> show binlog events in 'mysql-bin.000224' limit 3,5; 从第3行开始列出5行；
+# /usr/local/mysql/bin/mysqlbinlog mysql-bin.000220 |  grep -A10 "at 764$"
+```
+
+### 利用bin_log恢复数据
+
+```css
+mysqlbinlog  --start-date="2012-10-15 16:30:00" --stop-date="2012-10-15 17:00:00" mysql_bin.000001 | mysql -uroot -p123456 
+
+--start-positon="50"  // 指定从50位置开始 
+--stop-postion="100"  // 指定到100位置结束 
+```
+
+### Canal
+
+```css
+Canal基于MySQL增量日志解析，提供增量数据订阅和消费。
+Canal支持源端 MySQL 版本5.1.x , 5.5.x , 5.6.x , 5.7.x , 8.0.x
+
+1.MySQL master将数据变更写入二进制Binary log，记录二进制日志事件binary log events，可通过show binlog events;进行查看
+2.MySQL slave将master binary log events 拷贝到中继日志 relay log
+3.MySQL slave重放 relay log事件
+```
 
 
-## MySQL information_schema
+
+MySQL information_schema
 
 ```sql
 -- '5.7.30'
@@ -1317,6 +1506,50 @@ show variables like '%binlog_cache_size%';
 show variables like 'autocommit'; autocommit是针对连接的，在一个连接中修改了参数，不会对其他连接产生影响。如果关闭了autocommit，则所有的sql语句都在一个事务中，直到执行了commit或rollback，该事务结束，同时开始了另外一个事务。DDL语句(create table/drop table/alter/table)、lock tables语句在事务中执行了这些命令，会马上强制执行commit提交事务。
 ```
 
+### SQL_SAFE_UPDATES
+
+```sql
+14:24:26	UPDATE contract_second  s SET      project_id = (SELECT              project_id         FROM             ghxc_ica.contract c         WHERE             s.contract_id = c.id)	Error Code: 1175. You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.  To disable safe mode, toggle the option in Preferences -> SQL Editor and reconnect.	0.078 sec
+
+-- SQL_SAFE_UPDATES = 1时，不带where和limit条件的update和delete操作语句是无法执行的，即使是有where和limit条件但不带key column的update和delete也不能执行
+-- 安全模式关闭
+set sql_safe_updates=0; 
+
+-- 安全模式打开
+set sql_safe_updates=1;      
+```
+
+
+
+```sql
+EXPLAIN UPDATE contract_second  s
+SET 
+    project_id = (SELECT 
+            project_id
+        FROM
+            ghxc_ica.contract c
+        WHERE
+            s.contract_id = c.id);
+```
+
+| id   | select\_type         | table | partitions | type    | possible\_keys | key     | key\_len | ref                        | rows | filtered | Extra |
+| ---- | -------------------- | ----- | ---------- | ------- | -------------- | ------- | -------- | -------------------------- | ---- | -------- | ----- |
+| 1    | UPDATE               | s     | NULL       | index   | NULL           | PRIMARY | 8        | NULL                       | 42   | 100\.00  | NULL  |
+| 2    | "DEPENDENT SUBQUERY" | c     | NULL       | eq\_ref | PRIMARY        | PRIMARY | 8        | ghxc\_ica\.s\.contract\_id | 1    | 100\.00  | NULL  |
+
+```SQL
+EXPLAIN UPDATE contract_second s
+        LEFT JOIN
+    contract c ON s.contract_id = c.id 
+SET 
+    s.project_id = c.project_id;  
+```
+
+| id   | select\_type | table | partitions | type    | possible\_keys | key     | key\_len | ref                        | rows | filtered | Extra |
+| ---- | ------------ | ----- | ---------- | ------- | -------------- | ------- | -------- | -------------------------- | ---- | -------- | ----- |
+| 1    | UPDATE       | s     | NULL       | ALL     | NULL           | NULL    | NULL     | NULL                       | 42   | 100\.00  | NULL  |
+| 1    | SIMPLE       | c     | NULL       | eq\_ref | PRIMARY        | PRIMARY | 8        | ghxc\_ica\.s\.contract\_id | 1    | 100\.00  | NULL  |
+
 ## 死锁问题
 
 ```mysql
@@ -1618,7 +1851,7 @@ Read uncommitted 读未提交：最低级别，任何情况都无发提交
 
 脏读 T1读取了T2未提交数据
 
-幻读（虚读）：一次事务里，多次查询后，结果集的个数不一致叫幻读。Ex.T1事务读123，T2事务插入4提交，T1再读库里1234。![Phantom Read](http://hongchengjian.gitee.io/md/img/db/Phantom%20Read.png)
+幻读（虚读）：一次事务里，多次查询后，结果集的个数不一致叫幻读。Ex.T1事务读123，T2事务插入4提交，T1再读库里1234。
 
 MySQL可重复读的事务隔离级别前提下，T1事务读123，T2事务插入4，但T2提交后又撤销了，对T1事务的读并没有影响。
 
@@ -1646,7 +1879,13 @@ MySQL唯一索引和主键索引效率，主键（聚簇索引）优于唯一索
 
 ### MySQL索引类型
 
-
+| 索引类型 |      |
+| :------: | :--- |
+|  INDEX   |      |
+|  UNIQUE  |      |
+| PRIMARY  |      |
+| SPATIAL  |      |
+| FULLTEXT |      |
 
 ### MySQL索引失效
 
@@ -1760,11 +1999,228 @@ select * from tb1 a inner join tb2 b on a.id=b.id  inner join 参照表a中的�
 
 # Hive
 
+## Hive中文件存储格式及文件压缩方式
+
+```css
+1.文件存储方式: TextFile、SequenceFile、RCFile、ORCFile
+2.TextFile: 默认格式，存储方式为行存储，数据不做压缩，磁盘开销大，数据解析开销大，可以结合GZIP和BZIP使用，压缩文件不支持Split，Hive不对数据进行切分，从而无法对数据进行并行操作。
+3.SequenceFile: 由Hadoop API提供的一种二进制文件支持，具使用方便、可压缩，支持None、Record、Block三种压缩格式，Record压缩率低，一般使用Block。
+4.RCFile: 按行分块，每块按列存储。RCFile不支持任意方式的数据写入，仅提供了一种追加接口。
+5.ORCFile: 按行分块，每块按列存储，压缩快，快速列存取。 效率比RC
+```
+
+## Hive中三种自定义函数
+
+```css
+1.UDF:单行进入，单行输出。
+2、UDAF:多行进入，单行输出。
+3、UDTF:多行进入，多行输出。
+```
+
+## Hive的数据类型
+
+### 简单数据类型
+
+```css
+1.整形
+2.字符串类型
+3.时间戳
+4.浮点型
+5.HIVE中的基础数据类型和JAVA一样
+```
+
+### 复杂数据类型
+
+```css
+1.数组
+2.映射
+3.结构体
+```
+
+### NULL类型
+
+```
+Hive底层是"\N"
+```
+
+## Hive四种表类型
+
+```css
+1.外部表
+2.内部表
+3.桶表
+4.分区表
+```
+
+## Hive元数据三种保存方式
+
+```css
+1.内嵌式元存储服务器
+2.本地元存储服务器
+3.远程元存储服务器
+```
+
+## Hive数仓分层
+
+```css
+数据源：埋点采集、日志、Flume、Sqoop、Kettle等ETL工具导入HDFS，并映射到Hive数仓表中
+ODS(原貌不做处理): Operation Data Store 原始数据层，存放原始数据，直接加载原始日志、数据保持原貌不做处理
+DWD: Data Warehouse Detail 对ODS层数据进行清洗(去空、脏数据、超过极限范围数据、维度退化、降维、脱敏)
+DWS: Data Warehouse Service 以DWD为基础，按天进行轻度汇总
+DWT: Data Warehouse Topic 以DWS为基础，按主题进行汇总
+ADS: Application Data Store 为各种统计报表提供数据
+```
+
+## HiveSQL转化成MR过程
+
+```css
+1.HiveSQL被Parser转化成AST
+2.AST转化成Query Block
+3.Query Block被转化成Operator Tree
+4.优化Operator Tree
+5.Operator Tree转化成MR任务
+6.优化成最终的MR任务
+```
+
+## Hive与数据库交互
+
 ```
 
 ```
+
+
+
+## Hive数据倾斜
+
+### 原因
+
+```css
+1.key分布不均
+2.数据本身问题
+3.建表没考虑周全
+4.SQL有数据倾斜
+```
+
+### 解决方案
+
+```css
+(1)给key一个随机的值，打散key
+(2)Hive中参数调节①hive.map.aggr = true②hive.groupby.skewindata = true 作用：有数据倾斜时进行负载均衡，当选项设定位true，生成的查询计划会有两个MR Job。第一个MR Job中，Map的输出结果集合会随机分布到Reduce中，每个Reduce做部分聚合操作，并输出结果，这样处理的结果是相同的Group By Key有可能被分发到不同的Reduce中，从而达到负载均衡的目的；第二个MR Job再根据预处理的数据结果按照Group By Key 分布到 Reduce 中（这个过程可以保证相同的 Group By Key 被分布到同一个Reduce中），最后完成最终的聚合操作。
+(3)SQL调节：1、选用join key分布最均匀的表作为驱动表。2、大小表join的时候，让维度较小的表先进内存。3、大表join的时候，把空值的key变成一个字符串加上一个随机数，把倾斜的数据分到不同的reduce上。4、count distinct大量相同特殊值
+```
+
+### Ex.SQL调节
+
+COUNT(DISTINCT xxx)在 Hive中很容易造成数据倾斜
+
+```sql
+SELECT
+  COUNT(DISTINCT uuid)
+FROM detail_sdk_session t
+WHERE t.date >= '2020-01-01' AND t.date <= now;
+
+now表示当天的日期，越接近月末，上面的统计的数据量就会越大，只有一个reducer在进行COUNT(DISTINCT uuid)的计算，所有的数据都流向唯一的一个reducer，数据倾斜是必然的。
+```
+
+```sql
+-- 外层SELECT求和
+SELECT
+  SUM(mau_part) mau
+FROM
+(
+  -- 内层SELECT分别进行COUNT(DISTINCT)计算
+  SELECT
+    substr(uuid, 1, 3) uuid_part,
+    COUNT(DISTINCT substr(uuid, 4)) AS mau_part
+  FROM detail_sdk_session
+  WHERE partition_date >= '2016-01-01' AND partition_date <= now
+  GROUP BY substr(uuid, 1, 3)
+) t;
+
+内层SELECT根据uuid的前n位进行GROUP BY，并计算相应的活跃用户数COUNT(DISTINCT)，外层SELECT对COUNT(DISTINCT)结果进行求和，得到最终的月活跃用户数。 上面SQL中，n设为3，不应过大。原因：uuid是由字母和数字组成的：大写字母、小写字母和数字，字符总数为26+26+10=62，内层SELECT进行GROUP BY时，会有 62^n 个分组，外层SELECT就会进行 62^n 次求和。所以n不宜过大。当然，如果数据量十分巨大，n必须充分大，才能保证内层SELECT中的COUNT(DISTINCT)能够计算出来。
+```
+
+```sql
+--  第三层SELECT
+SELECT
+  SUM(s.mau_part) mau
+FROM
+(
+  -- 第二层SELECT
+  SELECT
+    tag,
+    COUNT(*) mau_part
+  FROM
+  (
+      -- 第一层SELECT
+    SELECT
+      uuid, 
+      CAST(RAND() * 100 AS BIGINT) tag  -- 为去重后的uuid打上标记，标记为：0-100之间的整数。
+    FROM detail_sdk_session
+    WHERE partition_date >= '2016-01-01' AND partition_date <= now
+    GROUP BY uuid   -- 通过GROUP BY，保证去重
+   ) t
+  GROUP BY tag
+) s;
+
+1.第一层SELECT：对uuid进行去重，并为去重后的uuid打上整数标记
+2.第二层SELECT：按照标记进行分组，统计每个分组下uuid的个数
+3.第三层SELECT：对所有分组进行求和 
+上面这个方法最关键的是为每个uuid进行标记，这样就可以对其进行分组，分别计数，最后去和。如果数据量确实很大，也可以增加分组的个数。例如：CAST(RAND() * 1000 AS BIGINT) tag 
+```
+
+## Sort By VS Order By VS Cluster By VS Distribute By
+
+```css
+(1)sort by: 非全局排序，在数据进入reducer前完成排序
+(2)order by: 会对输入做全局排序，因此只有一个reducer，如果有多个reducer无法保证全局的排序。计算规模较大，时间可能会很长。
+(3)cluster by: 除了具有distribute by的功能，还具有了sort by的功能。
+(4)distribute by：按照指定的字段对数据进行划分输出到不同的reduce中。
+```
+
+## Hive优化
+
+```css
+1.fetch抓取:修改配置文件hive.fetch.task.conversion为more，修改好全局查找和字段查找以及limit都不会触发MR任务。
+2.本地模式:大多数的Hadoop Job要求Hadoop提供完整的可扩展性来触发大数据集，不过有时候Hive的输入数据量非常的小，这样的情况下可能触发任务的事件比执行的事件还长，可以通过本地模式把小量的数据放到本地上面计算
+3.Group By:默认情况下，map阶段同一key的数据会发给一个reduce，当一个key数据过大就会倾斜，并不是所有的聚合操作都需要reduce端完成，很多聚合操作都可以现在map端进行部分聚合，最后在reduce端得出最终结果。(1)开启在map端聚合：hive.map.aggr = true。(2)在map端进行聚合操作的条目数：hive.groupby.mapaggr.checkinterval = 100000。(3)有数据倾斜的时候进行负载均衡：hive.groupby.skewindata = true。
+4.count dinstinc去重：大的数据集先用count distinct查找重复的字段，然后用group by再去重。
+5.行列过滤：列处理：只拿自己需要的列，如果有，尽量使用分区过滤。行处理：在分区裁剪的时候，当使用外关联的时候，先完全关联再过滤。
+6.动态分区调整：(1)开启动态分区：hive.exec.dynamic.partition=true。(2)设置为非严格模式：hive.exec.dynamic.partiton.mode = nostrict。(3)实操：创建分区表、加载数据到分区表中、创建目标分区、设置动态分区、查看目标分区表的分区情况
+7.小文件进行合并：在map执行之前合并小文件，减少map的数量，设置 set hive.input.format = org.apache.hadoop.hive.ql.io.CombineHiveInputFormat
+8.调整map的数量和reduce的数量
+9.并行执行：在Hive中可能有很多个阶段，不一定是一个阶段，这些阶段并非相互依赖的。然后这些阶段可以并行完成，设置并行：set hive.exec.parallel = true
+10.JVM重用，缺点是task槽会被占用，一直要等到任务完成才会释放
+```
+
+## HiveQL
+
+```css
+Hive没有delete和update
+
+分号符处理
+select concat(key,concat(';',key)) from dual;分号符用ASCII
+select concat(key,concat('\073',key)) from dual
+```
+
+
+
+#
 
 # HBase
+
+## 中间件持久化功能
+
+```css
+某一时刻机器挂了，还在内存但未处理完的数据不能凉
+Redis有AOF和RDB、Elasticsearch会把数据写到translog然后结合FileSystemCache将数据刷到磁盘中、Kafka本身就是将数据顺序写到磁盘
+
+先写Kafka暂存，后写Hive，Kafka数据不会单独取出来，持久化了的数据最常见用法是重新设置offset做回溯
+Elasticsearch分布式搜索引擎，用于检索，没有经常检索的需求，数据写入Elasticsearch要分词浪费资源
+HDFS不支持随机修改，查询效率低、对小文件支持不好(NameNode中因为大量的小文件的元数据，占用大量的内存空间)
+```
+
+
 
 ```css
 HBase也面向列，依赖Hadoop，适合统计维度不确定，可在廉价PC上搭建大规模结构化存储群。
@@ -1793,19 +2249,21 @@ HBase中，表数据按Region存储，每个Region有Startkey，EndKey，默认�
 
 # Redis
 
-## 简介
+## Redis VS Tair VS MemCache
 
-Redis、Tair、MemCache，MemCache单个value限制1M，但Redis存较大value、较大key的数据(阻塞后有雪崩风险)。Redis是位存储内存贵，不利于作为海量数据高性能读写，钱多啥都可以。Redis单行命令读写具原子性、多行不具原子性，Redis无事务，若要保证事务，需通过Lua插件。Redis单机CP，单进程多线程。Redis集群是AP。Tair是2010年淘宝研发的Key/Value数据存储系统，四种引擎mdb(基于MemCache)、rdb(基于Redis)、kdb(基于Kyoto Cabinet)、lob(基于Leveldb)。Redis没有提供sharding封装，但Tair提供给了sharding封装。Tair对每个数据都包含版本号，版本号在每次更新后都递增，解决并发操作同一条数据的问题，如key的value为'a,b,c'，操作A加一个d，value为'a,b,c,d'，操作B加一个e，value为'a,b,c,e'，不加版本控制，操作A和B谁先更新会覆盖后面的更新值。非持久化（mdb,rdb），持久化（kdb,ldb）。
+MemCache单个value限制1M，不支持主从、不支持分片，适合玩单机本地。
 
-## 原理
+Redis存较大value（最大512M）、较大key的数据(阻塞后有雪崩风险)。Redis是位存储内存贵，从成本上考虑不利于作为海量数据高性能读写。Redis单行命令读写具原子性、多行不具原子性，Redis无事务，若要保证事务，需通过Lua插件。Redis单机CP，单进程多线程。Redis集群是AP。
 
-### Redis epoll
+Tair是2010年淘宝研发的Key/Value数据存储系统，四种引擎mdb(基于MemCache)、rdb(基于Redis)、kdb(基于Kyoto Cabinet)、lob(基于Leveldb)。
 
-Redis单线程处理网络指令，不考虑并发安全，顺序线性执行。多路复用IO没有最大并发连接数限制，上限是操作系统句柄数cat /proc/sys/fs/file-max，epoll只管大量并发连接中少量活跃的连接数，和连接总数无关。epoll获取事件无须遍历整个被侦听描述符集FD，只需遍历被内核IO事件异步唤醒而加入Ready队列的描述符号集FD。epoll采用内存拷贝技术。epoll除了支持IO事件的LT Level Triggered水平触发，还提供边缘触发Edge Triggered。LT VS ET Level Triggered(默认，同时支持block和no-block socket)  VS 边缘触发Edge Triggered(只支持non-block socket)
+Redis没有提供sharding封装，但Tair提供给了sharding封装。Tair对每个数据都包含版本号，版本号在每次更新后都递增，解决并发操作同一条数据的问题，如key的value为'a,b,c'，操作A加一个d，value为'a,b,c,d'，操作B加一个e，value为'a,b,c,e'，不加版本控制，操作A和B谁先更新会覆盖后面的更新值。非持久化（mdb,rdb），持久化（kdb,ldb）。
 
-cat /proc/sys/fs/file-max(整个系统级别限制，不针对用户) VS ulimit -n(用户)
+热数据(访问频繁)、缓压力(下游DB)、预热(长驻内存数据) 
 
-### epoll指令
+使用缓存最重要确保抽离整个缓存，系统还能运转。
+
+## Epoll指令
 
 ```css
 epoll_create  创建一个epoll FD File Discriptor。
@@ -1813,7 +2271,7 @@ epoll_ctl 用来添加/修改/删除需要侦听的文件描述符及其事件�
 epoll_wait 接收发生在被侦听的描述符上的，用户感兴趣的IO事件(短链接中大量调用造成系统瓶颈)。
 ```
 
-### FD
+## FD
 
 ```css
 File Descriptor 文件描述符。
@@ -1822,43 +2280,13 @@ File Descriptor 文件描述符。
 相同的文件可以被不同的进程打开也可以在同一个进程中被多次打开。
 ```
 
-### epoll VS select/poll
+## Epoll VS Select/Poll
 
-1G内存 epoll可打开的FD是10W左右，而Select是默认FD_SETSIZE 1024。
+1G内存 Epoll可打开的FD是10W左右，而Select是默认FD_SETSIZE 1024。
 
-select/poll有很大socket集合时，每次调用会线性扫描全部的集合导致IO效率线性下降，epoll只会对活跃socket进行操作。
+Select/Poll有很大socket集合时，每次调用会线性扫描全部的集合导致IO效率线性下降，Epoll只会对活跃socket进行操作。
 
-高速的LAN，epoll效率并不一定比select/poll高，一旦使用idle connection模拟WAN环境，epoll效率远在select/poll之上。
-
-## 场景
-
-热数据(访问频繁)、缓压力(下游DB)、预热(长驻内存数据)
-
-## 心得
-
-使用缓存最重要确保抽离整个缓存，系统还能运转。
-
-## 架构
-
-
-
-
-
-### 哨兵
-
-哨兵作用：监控和**故障切换（failover）**（1）主库和从库是否正常运行。（2）主库挂了，从库是否能切过去成为新主库（Pub、Sub模式）
-
-```shell
-tmpwatch --atime 30d /tmp 清除/tmp目录下30天没有被访问文件
-```
-
-### 代理
-
-
-
-### 集群直联(去中心化)
-
-
+高速的LAN，Epoll效率并不一定比Select/Poll高，一旦使用idle connection模拟WAN环境，Epoll效率远在Select/poll之上。
 
 ## 集群模式
 
@@ -1868,11 +2296,48 @@ tmpwatch --atime 30d /tmp 清除/tmp目录下30天没有被访问文件
 
 主从复制策略： 一主多从(主写入压力大、主挂了，从库选举期间阻塞问题)、树状主从(利于CRC16算法将Slot均匀分配到不同主节点)
 
+#### 主从复制细节原理
+
+全量同步 VS 增量同步
+
+##### 全量同步
+
+```css
+Redis全收到量复制在Slave初始化阶段，Slave需将Master所有数据都复制一份
+(1)Slave连接Master，发送SYNC
+(2)Master接受到SYNC后，执行BGSAVE生成RDB并记录缓冲区记录此后执行的所有写命令
+(3)Master BGSAVE执行完后，向所有服务器发送快照文件，并在发送期间继续记录被执行的写命令
+(4)Slave收到快照文件后丢弃所有旧数据，载入收到的快照
+(5)Master发送快照完成后，开始向Slave发送缓冲区中的写命令
+(6)Slave完成对快照载入，开始接受命令请求，并执行来自主服务器缓冲区的写命令
+```
+
+##### 增量同步
+
+```css
+Redis增量同步在Slave初始化开始正常工作时主服务器发生的写操作同步到从服务器的过程
+增量复制的过程是Master每执行一个写命令就会向Slave发生相同的写命令，Slave接收并执行收到的写命令
+```
+
+##### 主从同步策略
+
+```css
+主从刚连接，进行全量同步，全量同步结束后，进行增量同步。若有需要，Slave在任何时候都可发起全量同步。Redis策略是无论如何首先尝试进行增量同步，若不成功，要求Slave进行全量同步。
+```
+
+##### 主从同步注意点
+
+```css
+(1)Redis使用异步复制，一个Master可以有多个Slave，多个Slave也可连接到一个Slave上
+(2)主从同步不阻塞Master(当若干个Slave进行同步时，Master仍然可以处理请求)
+```
+
 ### (2)哨兵
 
 ```css
-故障切换（failover）哨兵负责主库宕机之后的投票选举，实现自动化故障发现和转移。
-监控（1）主库和从库是否正常运行。（2）主库挂了，从库是否能切过去成为新主库（Pub、Sub模式）
+故障切换(failover)哨兵负责主库宕机之后的投票选举，实现自动化故障发现和转移。
+监控(1)主库和从库是否正常运行。(2)主库挂了，从库是否能切过去成为新主库(Pub、Sub)
+tmpwatch --atime 30d /tmp 清除/tmp目录下30天没有被访问文件
 ```
 
 Sentinel心跳+投票裁决 自动监控Master/Slave
@@ -1883,7 +2348,9 @@ Sentinel心跳+投票裁决 自动监控Master/Slave
 tmpwatch --atime 30d /tmp 清除/tmp目录下30天没有被访问文件
 ```
 
-### Redis Cluster 去中心化分片集群
+### (3)代理
+
+### (4)Redis Cluster 去中心化分片集群
 
 Redis Cluster是Redis 3.0+之后官方推荐，基于HASH_SLOT = CRC16(key) mod 16384实现集群分片和数据跨主机转移和共享，可以实现Redis动态扩容和缩容。注意HASH_SLOT只会分配给主库，从库不会被分配。HASH_SLOT目的是分摊key到片区的主库，减少雪崩风险，缓解传统单一主库的压力。如果写入的key计算出的HASH_SLOT不在当前操作的主库 HASH_SLOT_RANGE内，会自动将key转发到HASH_SLOT_RANGE包含HASH_SLOT的主库进行写。
 
@@ -1900,6 +2367,28 @@ Redis Cluster是Redis 3.0+之后官方推荐，基于HASH_SLOT = CRC16(key) mod 
 ```
 https://blog.csdn.net/qq_30056341/article/details/103320138 补充画出机器模型，尝试搭建
 ```
+
+## 持久化AOF和RDB
+
+Redis两种持久化，一种RDB直接从内存dump到磁盘，fork一个子进程先将数据写临时文件(副本：内存中的数据是原来2倍），写成功则将临时文件替换掉原文件，再二进制压缩。在指定的时间间隔内，执行指定次数的写操作，则会将内存中的数据写入到磁盘中。即在指定目录下生成一个dump.rdb文件。Redis 重启会通过加载dump.rdb文件恢复数据。
+
+```css
+# save ""
+save 900 1
+save 300 10
+save 60 10000
+
+#指定本地数据库文件名，一般采用默认的 dump.rdb
+dbfilename dump.rdb
+
+#指定本地数据库存放目录，一般也用默认配置
+dir ./
+
+#默认开启数据压缩，LZF压缩方式
+rdbcompression yes
+```
+
+另一种AOF，以日志文本记录每一个写、删除操作，查询不记录，追加写入文件，Append of File。
 
 ## 常用Jar
 
@@ -1970,7 +2459,7 @@ MSETNX
 MGET
 ```
 
-#### Jedis PIPELINE
+#### Jedis PIPELINE(微盟面试题)
 
 ```java
 @Configuration
@@ -2502,23 +2991,25 @@ Key过期时间满不删，读库取Key检查过期？过期删除返回null：�
 
 高频低时效：预热、扩容、优化缓存粒度（粒度意思是大对象拆细分片，不拆redis集群有的数据小读取块，有的十分大读取非常慢占用更多的网络资源来序列化）、定时更新缓存提高命中率。
 
-## 缓存雪崩
+## 缓存雪崩、降级、穿透、预热
+
+### 缓存雪崩
 
 Scenario：（1）缓存集群重启（2）缓存的过期时间设置导致的集体失效（3）大查询流量去读库
 
 Solution：（1）机架做HA（主从、大对象分片）、主从、扩展，开启AOF（灾备、误删）或RDB（全量数据恢复、快）（2）热度排序，高热度缓存过期时间设长、冷门设短，范围区间内随机设置过期时间（3）Encache（内存也备一份）+ hystrix
 
-大对象比如2M以上的放redis，虽然redis支持很大甚至G级的value值，由于大对象序列化和反序列化要消耗更多的时间，大量请求下会阻塞，阻塞对后续的服务产生影响，有依赖关系的服务都受影响，大面积的阻塞最后导致雪崩
+大对象比如2M以上的放redis，虽然Redis支持很大Value值，由于大对象序列化和反序列化要消耗更多的时间，大量请求下会阻塞，阻塞对后续的服务产生影响，有依赖关系的服务都受影响，大面积的阻塞最后导致雪崩
 
 雪崩曲线：一般是由平缓急剧下降后再急剧上升。
 
-## 缓存降级
+### 缓存降级
 
 Scenario：缓存集群挂掉、失效，也不读库，直接返回默认数据（写死、配置数据、读库）
 
 Solution：热点数据双保险，一份内存，另一份缓存
 
-## 缓存穿透
+### 缓存穿透
 
 流程：查缓存—>缓存不存在读库
 
@@ -2526,7 +3017,7 @@ Scenario：恶意攻击或高并发请求查缓存没查到后读库，没命中
 
 Solution：数据库若也没有设一个key null也设置过期时间，滤重 bitmap效果明显比boomfilter好
 
-## 缓存预热
+### 缓存预热
 
 Scenario：元数据提前预热加载到缓存，避免先查库
 
@@ -2538,29 +3029,7 @@ Solution：依据数据量（1）量小，放Apollo配置或工程启动时加�
 Redis不支持事务，Redis单个操作是原子性的。多个操作顺序执行不具备原子性，执行过程中中间失败话，不会回滚，还会继续执行。为什么不支持回滚？原子性的命令操作直观给出异常比负杂逻辑更清晰明了。事务回滚并不会解决程序Bug，只有当Redis命令有语法错误时才会执行失败，不支持回滚是让开发人员在开发期间就发现错误，尽早抛出错误。如何保证Redis执行多个操作不中断？Redis执行Lua脚本具原子性。
 ```
 
-## 持久化AOF和RDB
-
-Redis两种持久化，一种RDB直接从内存dump到磁盘，fork一个子进程先将数据写临时文件(副本：内存中的数据是原来2倍），写成功则将临时文件替换掉原文件，再二进制压缩。在指定的时间间隔内，执行指定次数的写操作，则会将内存中的数据写入到磁盘中。即在指定目录下生成一个dump.rdb文件。Redis 重启会通过加载dump.rdb文件恢复数据。
-
-```css
-# save ""
-save 900 1
-save 300 10
-save 60 10000
-
-#指定本地数据库文件名，一般采用默认的 dump.rdb
-dbfilename dump.rdb
-
-#指定本地数据库存放目录，一般也用默认配置
-dir ./
-
-#默认开启数据压缩，LZF压缩方式
-rdbcompression yes
-```
-
-另一种AOF，以日志文本记录每一个写、删除操作，查询不记录，追加写入文件，Append of File。
-
-### 选型
+### 选型RDB VS AOF
 
 RDB（全量数据、无法实时和秒级持久化、大数据量、夜深人静悄悄恢复、副本占2倍内存、数据完整性和一致性低）
 
@@ -2588,7 +3057,7 @@ So 16k was in the right range to ensure enough slots per master with a max of 10
 
 若槽位Slot太大，发送心跳信息的消息头达8k，发送的心跳包过于庞大。e.g.如果是2的16次方作为Slot，65536÷8÷1024=8KB，8KB的消息头浪费带宽。槽位太小，bitmap的填充率Slots / N很高(N表示节点数)，bitmap的压缩率就很低。
 
-```shell
+```css
 cluster info 查看当前集群信息
 cluster nodes 查看集群各个节点负责的Slot
 ```
@@ -2607,6 +3076,22 @@ bitmap进行压缩高，槽位越小，节点少的情况下，压缩率高，bi
 Redis Cluster划分为16383个Slot，不同key划分到不同Slot，Redis Cluster是作者antirez自己实现CRC16 hash算法，算法公式是HASH_SLOT = CRC16(key) mod 16384，Redis Cluster没有用一致性Hash。Codis是1024个Slot。
 ```
 
+# HDFS
+
+# Flume
+
+# Kylin
+
+# Storm(快被淘汰)
+
+# Yarn
+
+
+
+# Mesos
+
+
+
 # Hibernate
 
 # Mybatis VS JPA VS SpringData
@@ -2616,6 +3101,10 @@ Mybatis移植需改SQL，JPA(是规范，SpringData JPA是框架)不关心数据
 ```
 
 # Mybatis
+
+## Mybatis Plugin(阿里面试题)
+
+
 
 ## Mybatis数据类型
 
